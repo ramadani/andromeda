@@ -13,37 +13,37 @@ type ReduceUsageOption struct {
 type reduceQuotaUsage struct {
 	cache         Cache
 	getKeyLimit   GetQuotaCache
-	next          ReduceQuotaUsage
+	next          UpdateQuotaUsage
 	reversible    bool
 	modifiedUsage int64
 }
 
-func (q *reduceQuotaUsage) Do(ctx context.Context, id string, usage int64, data interface{}) (res interface{}, err error) {
+func (q *reduceQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
 	cache, err := q.getKeyLimit.Do(ctx, id, data)
 	if err == ErrQuotaNotFound {
-		return q.next.Do(ctx, id, usage, data)
+		return q.next.Do(ctx, id, value, data)
 	} else if err != nil {
 		return
 	}
 
-	quotaUsage := usage
+	usage := value
 	if q.modifiedUsage > 0 {
-		quotaUsage = q.modifiedUsage
+		usage = q.modifiedUsage
 	}
 
-	if _, err = q.cache.DecrBy(ctx, cache.Key, quotaUsage); err != nil {
+	if _, err = q.cache.DecrBy(ctx, cache.Key, usage); err != nil {
 		return
 	}
 
 	defer func() {
 		if err != nil && q.reversible {
-			if _, er := q.cache.IncrBy(ctx, cache.Key, quotaUsage); er != nil {
+			if _, er := q.cache.IncrBy(ctx, cache.Key, usage); er != nil {
 				err = er
 			}
 		}
 	}()
 
-	res, err = q.next.Do(ctx, id, usage, data)
+	res, err = q.next.Do(ctx, id, value, data)
 	return
 }
 
@@ -51,9 +51,9 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, id string, usage int64, data 
 func NewReduceQuotaUsage(
 	cache Cache,
 	getKeyLimit GetQuotaCache,
-	next ReduceQuotaUsage,
+	next UpdateQuotaUsage,
 	option ReduceUsageOption,
-) ReduceQuotaUsage {
+) UpdateQuotaUsage {
 	return &reduceQuotaUsage{
 		cache:         cache,
 		getKeyLimit:   getKeyLimit,

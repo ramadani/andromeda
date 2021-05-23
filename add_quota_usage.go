@@ -14,21 +14,21 @@ type addQuotaUsage struct {
 	cache         Cache
 	getQuotaCache GetQuotaCache
 	getQuotaLimit GetQuota
-	next          AddQuotaUsage
+	next          UpdateQuotaUsage
 	modifiedUsage int64
 }
 
-func (q *addQuotaUsage) Do(ctx context.Context, id string, usage int64, data interface{}) (res interface{}, err error) {
+func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
 	cache, err := q.getQuotaCache.Do(ctx, id, data)
 	if err == ErrQuotaNotFound {
-		return q.next.Do(ctx, id, usage, data)
+		return q.next.Do(ctx, id, value, data)
 	} else if err != nil {
 		return
 	}
 
-	quotaUsage := usage
+	usage := value
 	if q.modifiedUsage > 0 {
-		quotaUsage = q.modifiedUsage
+		usage = q.modifiedUsage
 	}
 
 	limit, err := q.getQuotaLimit.Do(ctx, id, data)
@@ -36,25 +36,25 @@ func (q *addQuotaUsage) Do(ctx context.Context, id string, usage int64, data int
 		return
 	}
 
-	totalUsage, err := q.cache.IncrBy(ctx, cache.Key, quotaUsage)
+	totalUsage, err := q.cache.IncrBy(ctx, cache.Key, usage)
 	if err != nil {
 		return
 	}
 
 	defer func() {
 		if err != nil {
-			if _, er := q.cache.DecrBy(ctx, cache.Key, quotaUsage); er != nil {
+			if _, er := q.cache.DecrBy(ctx, cache.Key, usage); er != nil {
 				err = er
 			}
 		}
 	}()
 
 	if totalUsage > limit {
-		err = NewQuotaLimitExceededError(cache.Key, limit, totalUsage-quotaUsage)
+		err = NewQuotaLimitExceededError(cache.Key, limit, totalUsage-usage)
 		return
 	}
 
-	res, err = q.next.Do(ctx, id, usage, data)
+	res, err = q.next.Do(ctx, id, value, data)
 	return
 }
 
@@ -63,9 +63,9 @@ func NewAddQuotaUsage(
 	cache Cache,
 	getQuotaCache GetQuotaCache,
 	getQuotaLimit GetQuota,
-	next AddQuotaUsage,
+	next UpdateQuotaUsage,
 	option AddUsageOption,
-) AddQuotaUsage {
+) UpdateQuotaUsage {
 	return &addQuotaUsage{
 		cache:         cache,
 		getQuotaCache: getQuotaCache,
