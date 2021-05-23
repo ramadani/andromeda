@@ -2,4 +2,7 @@ module github.com/ramadani/andromeda
 
 go 1.16
 
-require github.com/go-redis/redis/v8 v8.8.3 // indirect
+require (
+	github.com/go-redis/redis/v8 v8.8.3
+	github.com/golang/mock v1.5.0
+)
