@@ -11,8 +11,8 @@ var (
 	ErrReduceQuotaUsage = errors.New("error reducing quota usage")
 	// ErrQuotaLimitExceeded is error for quota exceeded
 	ErrQuotaLimitExceeded = errors.New("quota limit exceeded")
-	// ErrLockedKey .
+	// ErrLockedKey is error for locked key
 	ErrLockedKey = errors.New("locked key")
-	// ErrMaxRetryExceeded .
+	// ErrMaxRetryExceeded is error for max retry exceeded
 	ErrMaxRetryExceeded = errors.New("max retry exceeded")
 )
