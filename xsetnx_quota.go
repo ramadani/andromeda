@@ -2,8 +2,16 @@ package andromeda
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+)
+
+var (
+	// ErrLockedKey .
+	ErrLockedKey = errors.New("locked key")
+	// ErrMaxRetryExceeded .
+	ErrMaxRetryExceeded = errors.New("max retry exceeded")
 )
 
 type xSetNXQuota struct {
@@ -31,7 +39,7 @@ func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err 
 	if err != nil {
 		return
 	} else if !succeedLock {
-		err = fmt.Errorf("locked key %s", lockKey)
+		err = fmt.Errorf("%w: %s", ErrLockedKey, lockKey)
 		return
 	}
 
@@ -60,5 +68,34 @@ func NewXSetNXQuota(
 		getQuotaCache: getQuotaCache,
 		getQuota:      getQuota,
 		lockIn:        lockIn,
+	}
+}
+
+type retryableXSetNXQuota struct {
+	next     XSetNXQuota
+	maxRetry int
+	sleepIn  time.Duration
+}
+
+func (q *retryableXSetNXQuota) Do(ctx context.Context, id string, data interface{}) error {
+	for i := 0; i < q.maxRetry; i++ {
+		if err := q.next.Do(ctx, id, data); err == nil {
+			return nil
+		}
+
+		if i+1 != q.maxRetry {
+			time.Sleep(q.sleepIn)
+		}
+	}
+
+	return ErrMaxRetryExceeded
+}
+
+// NewRetryableXSetNXQuota .
+func NewRetryableXSetNXQuota(next XSetNXQuota, maxRetry int, sleepIn time.Duration) XSetNXQuota {
+	return &retryableXSetNXQuota{
+		next:     next,
+		maxRetry: maxRetry,
+		sleepIn:  sleepIn,
 	}
 }
