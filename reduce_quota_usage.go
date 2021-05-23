@@ -11,15 +11,15 @@ type ReduceUsageOption struct {
 }
 
 type reduceQuotaUsage struct {
-	cache         Cache
-	getKeyLimit   GetQuotaCache
-	next          UpdateQuotaUsage
-	reversible    bool
-	modifiedUsage int64
+	cache               Cache
+	getQuotaCacheParams GetQuotaCacheParams
+	next                UpdateQuotaUsage
+	reversible          bool
+	modifiedUsage       int64
 }
 
 func (q *reduceQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
-	cache, err := q.getKeyLimit.Do(ctx, id, data)
+	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
 	if err == ErrQuotaNotFound {
 		return q.next.Do(ctx, id, value, data)
 	} else if err != nil {
@@ -50,15 +50,15 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, id string, value int64, data 
 // NewReduceQuotaUsage .
 func NewReduceQuotaUsage(
 	cache Cache,
-	getKeyLimit GetQuotaCache,
+	getQuotaCacheParams GetQuotaCacheParams,
 	next UpdateQuotaUsage,
 	option ReduceUsageOption,
 ) UpdateQuotaUsage {
 	return &reduceQuotaUsage{
-		cache:         cache,
-		getKeyLimit:   getKeyLimit,
-		next:          next,
-		reversible:    option.Reversible,
-		modifiedUsage: option.ModifiedUsage,
+		cache:               cache,
+		getQuotaCacheParams: getQuotaCacheParams,
+		next:                next,
+		reversible:          option.Reversible,
+		modifiedUsage:       option.ModifiedUsage,
 	}
 }

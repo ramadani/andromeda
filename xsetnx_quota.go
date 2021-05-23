@@ -15,14 +15,14 @@ var (
 )
 
 type xSetNXQuota struct {
-	cache         Cache
-	getQuotaCache GetQuotaCache
-	getQuota      GetQuota
-	lockIn        time.Duration
+	cache               Cache
+	getQuotaCacheParams GetQuotaCacheParams
+	getQuota            GetQuota
+	lockIn              time.Duration
 }
 
 func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err error) {
-	cache, err := q.getQuotaCache.Do(ctx, id, data)
+	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
 	if err != nil {
 		return
 	}
@@ -59,15 +59,15 @@ func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err 
 // NewXSetNXQuota .
 func NewXSetNXQuota(
 	cache Cache,
-	getQuotaCache GetQuotaCache,
+	getQuotaCacheParams GetQuotaCacheParams,
 	getQuota GetQuota,
 	lockIn time.Duration,
 ) XSetNXQuota {
 	return &xSetNXQuota{
-		cache:         cache,
-		getQuotaCache: getQuotaCache,
-		getQuota:      getQuota,
-		lockIn:        lockIn,
+		cache:               cache,
+		getQuotaCacheParams: getQuotaCacheParams,
+		getQuota:            getQuota,
+		lockIn:              lockIn,
 	}
 }
 

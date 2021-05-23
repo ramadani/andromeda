@@ -11,15 +11,15 @@ type AddUsageOption struct {
 }
 
 type addQuotaUsage struct {
-	cache         Cache
-	getQuotaCache GetQuotaCache
-	getQuotaLimit GetQuota
-	next          UpdateQuotaUsage
-	modifiedUsage int64
+	cache               Cache
+	getQuotaCacheParams GetQuotaCacheParams
+	getQuotaLimit       GetQuota
+	next                UpdateQuotaUsage
+	modifiedUsage       int64
 }
 
 func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
-	cache, err := q.getQuotaCache.Do(ctx, id, data)
+	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
 	if err == ErrQuotaNotFound {
 		return q.next.Do(ctx, id, value, data)
 	} else if err != nil {
@@ -61,17 +61,17 @@ func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data int
 // NewAddQuotaUsage .
 func NewAddQuotaUsage(
 	cache Cache,
-	getQuotaCache GetQuotaCache,
+	getQuotaCacheParams GetQuotaCacheParams,
 	getQuotaLimit GetQuota,
 	next UpdateQuotaUsage,
 	option AddUsageOption,
 ) UpdateQuotaUsage {
 	return &addQuotaUsage{
-		cache:         cache,
-		getQuotaCache: getQuotaCache,
-		getQuotaLimit: getQuotaLimit,
-		next:          next,
-		modifiedUsage: option.ModifiedUsage,
+		cache:               cache,
+		getQuotaCacheParams: getQuotaCacheParams,
+		getQuotaLimit:       getQuotaLimit,
+		next:                next,
+		modifiedUsage:       option.ModifiedUsage,
 	}
 }
 

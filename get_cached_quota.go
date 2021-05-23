@@ -7,12 +7,12 @@ import (
 )
 
 type getCachedQuota struct {
-	cache         Cache
-	getQuotaCache GetQuotaCache
+	cache               Cache
+	getQuotaCacheParams GetQuotaCacheParams
 }
 
 func (q *getCachedQuota) Do(ctx context.Context, id string, data interface{}) (int64, error) {
-	cache, err := q.getQuotaCache.Do(ctx, id, data)
+	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
 	if err != nil {
 		return 0, err
 	}
@@ -30,6 +30,6 @@ func (q *getCachedQuota) Do(ctx context.Context, id string, data interface{}) (i
 }
 
 // NewGetCachedQuota .
-func NewGetCachedQuota(cache Cache, getQuotaCache GetQuotaCache) GetQuota {
-	return &getCachedQuota{cache: cache, getQuotaCache: getQuotaCache}
+func NewGetCachedQuota(cache Cache, getQuotaCacheParams GetQuotaCacheParams) GetQuota {
+	return &getCachedQuota{cache: cache, getQuotaCacheParams: getQuotaCacheParams}
 }
