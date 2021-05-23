@@ -2,15 +2,7 @@ package andromeda
 
 import (
 	"context"
-	"errors"
 	"time"
-)
-
-var (
-	// ErrQuotaNotFound is error for quota not found
-	ErrQuotaNotFound = errors.New("quota not found")
-	// ErrQuotaLimitExceeded is error for quota exceeded
-	ErrQuotaLimitExceeded = errors.New("quota limit exceeded")
 )
 
 // QuotaCacheParams is a model for quota cache parameters

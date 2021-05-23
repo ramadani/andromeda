@@ -7,6 +7,7 @@ import (
 
 // AddUsageOption .
 type AddUsageOption struct {
+	Reversible    bool
 	ModifiedUsage int64
 }
 
@@ -15,7 +16,7 @@ type addQuotaUsage struct {
 	getQuotaCacheParams GetQuotaCacheParams
 	getQuotaLimit       GetQuota
 	next                UpdateQuotaUsage
-	modifiedUsage       int64
+	option              AddUsageOption
 }
 
 func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
@@ -27,8 +28,8 @@ func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data int
 	}
 
 	usage := value
-	if q.modifiedUsage > 0 {
-		usage = q.modifiedUsage
+	if q.option.ModifiedUsage > 0 {
+		usage = q.option.ModifiedUsage
 	}
 
 	limit, err := q.getQuotaLimit.Do(ctx, id, data)
@@ -38,24 +39,33 @@ func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data int
 
 	totalUsage, err := q.cache.IncrBy(ctx, cache.Key, usage)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", ErrAddQuotaUsage, err)
 		return
 	}
 
-	defer func() {
-		if err != nil {
-			if _, er := q.cache.DecrBy(ctx, cache.Key, usage); er != nil {
-				err = er
-			}
-		}
-	}()
-
 	if totalUsage > limit {
 		err = NewQuotaLimitExceededError(cache.Key, limit, totalUsage-usage)
+		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			err = er
+		}
 		return
 	}
 
 	res, err = q.next.Do(ctx, id, value, data)
+
+	if err != nil && q.option.Reversible {
+		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			err = er
+		}
+	}
 	return
+}
+
+func (q *addQuotaUsage) reverseUsage(ctx context.Context, key string, usage int64) error {
+	if _, err := q.cache.DecrBy(ctx, key, usage); err != nil {
+		return fmt.Errorf("%w: %v", ErrReduceQuotaUsage, err)
+	}
+	return nil
 }
 
 // NewAddQuotaUsage .
@@ -71,7 +81,7 @@ func NewAddQuotaUsage(
 		getQuotaCacheParams: getQuotaCacheParams,
 		getQuotaLimit:       getQuotaLimit,
 		next:                next,
-		modifiedUsage:       option.ModifiedUsage,
+		option:              option,
 	}
 }
 

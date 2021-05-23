@@ -2,6 +2,7 @@ package andromeda
 
 import (
 	"context"
+	"fmt"
 )
 
 // ReduceUsageOption .
@@ -14,8 +15,7 @@ type reduceQuotaUsage struct {
 	cache               Cache
 	getQuotaCacheParams GetQuotaCacheParams
 	next                UpdateQuotaUsage
-	reversible          bool
-	modifiedUsage       int64
+	option              ReduceUsageOption
 }
 
 func (q *reduceQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
@@ -27,23 +27,22 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, id string, value int64, data 
 	}
 
 	usage := value
-	if q.modifiedUsage > 0 {
-		usage = q.modifiedUsage
+	if q.option.ModifiedUsage > 0 {
+		usage = q.option.ModifiedUsage
 	}
 
 	if _, err = q.cache.DecrBy(ctx, cache.Key, usage); err != nil {
+		err = fmt.Errorf("%w: %v", ErrReduceQuotaUsage, err)
 		return
 	}
 
-	defer func() {
-		if err != nil && q.reversible {
-			if _, er := q.cache.IncrBy(ctx, cache.Key, usage); er != nil {
-				err = er
-			}
-		}
-	}()
-
 	res, err = q.next.Do(ctx, id, value, data)
+
+	if err != nil && q.option.Reversible {
+		if _, er := q.cache.IncrBy(ctx, cache.Key, usage); er != nil {
+			err = fmt.Errorf("%w: %v", ErrAddQuotaUsage, er)
+		}
+	}
 	return
 }
 
@@ -58,7 +57,6 @@ func NewReduceQuotaUsage(
 		cache:               cache,
 		getQuotaCacheParams: getQuotaCacheParams,
 		next:                next,
-		reversible:          option.Reversible,
-		modifiedUsage:       option.ModifiedUsage,
+		option:              option,
 	}
 }

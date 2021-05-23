@@ -2,16 +2,8 @@ package andromeda
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
-)
-
-var (
-	// ErrLockedKey .
-	ErrLockedKey = errors.New("locked key")
-	// ErrMaxRetryExceeded .
-	ErrMaxRetryExceeded = errors.New("max retry exceeded")
 )
 
 type xSetNXQuota struct {
@@ -28,9 +20,7 @@ func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err 
 	}
 
 	exists, err := q.cache.Exists(ctx, cache.Key)
-	if err != nil {
-		return
-	} else if exists == 1 {
+	if err != nil || exists == 1 {
 		return
 	}
 
@@ -44,7 +34,9 @@ func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err 
 	}
 
 	defer func() {
-		_, err = q.cache.Del(ctx, lockKey)
+		if _, er := q.cache.Del(ctx, lockKey); er != nil {
+			err = er
+		}
 	}()
 
 	val, err := q.getQuota.Do(ctx, id, data)
