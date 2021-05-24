@@ -11,8 +11,8 @@ type getCachedQuota struct {
 	getQuotaCacheParams GetQuotaCacheParams
 }
 
-func (q *getCachedQuota) Do(ctx context.Context, id string, data interface{}) (int64, error) {
-	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
+func (q *getCachedQuota) Do(ctx context.Context, req *QuotaRequest) (int64, error) {
+	cache, err := q.getQuotaCacheParams.Do(ctx, req)
 	if err != nil {
 		return 0, err
 	}

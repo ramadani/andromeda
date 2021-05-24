@@ -24,13 +24,13 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorGetQuotaCacheParam", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(nil, mockErr)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(nil, mockErr)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
@@ -39,14 +39,14 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("DoNextWhenQuotaNotFound", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockRes := "result"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(nil, andromeda.ErrQuotaNotFound)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(nil, andromeda.ErrQuotaNotFound)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Equal(t, mockRes, res)
 		assert.Nil(t, err)
@@ -55,18 +55,18 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorGetQuotaLimit", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
 		}
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(int64(0), mockErr)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(int64(0), mockErr)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
@@ -75,8 +75,8 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorIncrementUsage", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -84,11 +84,11 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockLimit := int64(1000)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(int64(0), mockErr)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(0), mockErr)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.Error(t, err)
@@ -98,22 +98,22 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorQuotaLimitExceeded", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
 		}
 		mockLimit := int64(10000)
 		mockUsage := int64(11000)
-		mockErr := andromeda.NewQuotaLimitExceededError(mockCacheParams.Key, mockLimit, mockUsage-value)
+		mockErr := andromeda.NewQuotaLimitExceededError(mockCacheParams.Key, mockLimit, mockUsage-quotaUsageReq.Usage)
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(mockUsage, nil)
-		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, value).Return(mockLimit, nil)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockLimit, nil)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
@@ -122,8 +122,8 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorDecrementUsageWhenErrorQuotaLimitExceeded", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -132,12 +132,12 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockUsage := int64(11000)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(mockUsage, nil)
-		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, value).Return(int64(0), mockErr)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(0), mockErr)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.Error(t, err)
@@ -147,8 +147,8 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("DecrementUsageWhenNextHasError", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -157,13 +157,13 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockUsage := int64(10000)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(mockUsage, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(nil, mockErr)
-		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, value).Return(mockUsage-value, nil)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage, nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(nil, mockErr)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage-quotaUsageReq.Usage, nil)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
@@ -172,8 +172,8 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("ErrorDecrementUsageWhenNextHasError", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -182,13 +182,13 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockUsage := int64(10000)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(mockUsage, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(nil, mockErr)
-		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, value).Return(mockUsage-value, mockErr)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage, nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(nil, mockErr)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage-quotaUsageReq.Usage, mockErr)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Nil(t, res)
 		assert.Error(t, err)
@@ -198,8 +198,8 @@ func TestAddQuotaUsage(t *testing.T) {
 	t.Run("SucceedAddQuotaUsage", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -208,12 +208,12 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockUsage := int64(10000)
 		mockRes := "result"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
-		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, value).Return(mockUsage, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(mockUsage, nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Equal(t, mockRes, res)
 		assert.Nil(t, err)
@@ -224,8 +224,8 @@ func TestAddQuotaUsage(t *testing.T) {
 		addQuotaUsage = andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, opt)
 		defer mockCtrl.Finish()
 
-		id := "123"
-		value := int64(1000)
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
 		mockCacheParams := &andromeda.QuotaCacheParams{
 			Key:        "key-123",
 			Expiration: 5 * time.Second,
@@ -234,12 +234,12 @@ func TestAddQuotaUsage(t *testing.T) {
 		mockUsage := int64(10000)
 		mockRes := "result"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, id, nil).Return(mockCacheParams, nil)
-		mockGetQuotaLimit.EXPECT().Do(ctx, id, nil).Return(mockLimit, nil)
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockGetQuotaLimit.EXPECT().Do(ctx, quotaReq).Return(mockLimit, nil)
 		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, opt.ModifiedUsage).Return(mockUsage, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
 
-		res, err := addQuotaUsage.Do(ctx, id, value, nil)
+		res, err := addQuotaUsage.Do(ctx, quotaUsageReq)
 
 		assert.Equal(t, mockRes, res)
 		assert.Nil(t, err)

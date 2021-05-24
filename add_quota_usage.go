@@ -19,20 +19,22 @@ type addQuotaUsage struct {
 	option              AddUsageOption
 }
 
-func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (res interface{}, err error) {
-	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
+func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res interface{}, err error) {
+	quotaReq := &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data}
+
+	cache, err := q.getQuotaCacheParams.Do(ctx, quotaReq)
 	if err == ErrQuotaNotFound {
-		return q.next.Do(ctx, id, value, data)
+		return q.next.Do(ctx, req)
 	} else if err != nil {
 		return
 	}
 
-	usage := value
+	usage := req.Usage
 	if q.option.ModifiedUsage > 0 {
 		usage = q.option.ModifiedUsage
 	}
 
-	limit, err := q.getQuotaLimit.Do(ctx, id, data)
+	limit, err := q.getQuotaLimit.Do(ctx, quotaReq)
 	if err != nil {
 		return
 	}
@@ -51,7 +53,7 @@ func (q *addQuotaUsage) Do(ctx context.Context, id string, value int64, data int
 		return
 	}
 
-	res, err = q.next.Do(ctx, id, value, data)
+	res, err = q.next.Do(ctx, req)
 
 	if err != nil && q.option.Reversible {
 		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {

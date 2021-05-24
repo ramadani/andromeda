@@ -6,13 +6,13 @@ type updateQuotaUsageMiddleware struct {
 	prev, next UpdateQuotaUsage
 }
 
-func (q *updateQuotaUsageMiddleware) Do(ctx context.Context, id string, value int64, data interface{}) (interface{}, error) {
-	res, err := q.prev.Do(ctx, id, value, data)
+func (q *updateQuotaUsageMiddleware) Do(ctx context.Context, req *QuotaUsageRequest) (interface{}, error) {
+	res, err := q.prev.Do(ctx, req)
 	if err != nil {
 		return res, err
 	}
 
-	return q.next.Do(ctx, id, value, data)
+	return q.next.Do(ctx, req)
 }
 
 // NewUpdateQuotaUsageMiddleware .

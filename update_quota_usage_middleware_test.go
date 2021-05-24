@@ -18,42 +18,39 @@ func TestUpdateQuotaUsageMiddleware(t *testing.T) {
 	updateQuotaUsage := andromeda.NewUpdateQuotaUsageMiddleware(mockPrev, mockNext)
 
 	t.Run("ExitWhenPrevHasError", func(t *testing.T) {
-		id := "123"
-		value := int64(1000)
+		req := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
 		mockErr := errors.New("unexpected")
 
-		mockPrev.EXPECT().Do(ctx, id, value, nil).Return(nil, mockErr)
+		mockPrev.EXPECT().Do(ctx, req).Return(nil, mockErr)
 
-		res, err := updateQuotaUsage.Do(ctx, id, value, nil)
+		res, err := updateQuotaUsage.Do(ctx, req)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
 	})
 
 	t.Run("NextHasError", func(t *testing.T) {
-		id := "123"
-		value := int64(1000)
+		req := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
 		mockRes := "result"
 		mockErr := errors.New("unexpected")
 
-		mockPrev.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(nil, mockErr)
+		mockPrev.EXPECT().Do(ctx, req).Return(mockRes, nil)
+		mockNext.EXPECT().Do(ctx, req).Return(nil, mockErr)
 
-		res, err := updateQuotaUsage.Do(ctx, id, value, nil)
+		res, err := updateQuotaUsage.Do(ctx, req)
 
 		assert.Nil(t, res)
 		assert.EqualError(t, err, mockErr.Error())
 	})
 
 	t.Run("NoError", func(t *testing.T) {
-		id := "123"
-		value := int64(1000)
+		req := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
 		mockRes := "result"
 
-		mockPrev.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
-		mockNext.EXPECT().Do(ctx, id, value, nil).Return(mockRes, nil)
+		mockPrev.EXPECT().Do(ctx, req).Return(mockRes, nil)
+		mockNext.EXPECT().Do(ctx, req).Return(mockRes, nil)
 
-		res, err := updateQuotaUsage.Do(ctx, id, value, nil)
+		res, err := updateQuotaUsage.Do(ctx, req)
 
 		assert.Equal(t, mockRes, res)
 		assert.Nil(t, err)

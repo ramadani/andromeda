@@ -36,18 +36,18 @@ func (m *MockUpdateQuotaUsage) EXPECT() *MockUpdateQuotaUsageMockRecorder {
 }
 
 // Do mocks base method.
-func (m *MockUpdateQuotaUsage) Do(ctx context.Context, id string, value int64, data interface{}) (interface{}, error) {
+func (m *MockUpdateQuotaUsage) Do(ctx context.Context, req *andromeda.QuotaUsageRequest) (interface{}, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", ctx, id, value, data)
+	ret := m.ctrl.Call(m, "Do", ctx, req)
 	ret0, _ := ret[0].(interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Do indicates an expected call of Do.
-func (mr *MockUpdateQuotaUsageMockRecorder) Do(ctx, id, value, data interface{}) *gomock.Call {
+func (mr *MockUpdateQuotaUsageMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockUpdateQuotaUsage)(nil).Do), ctx, id, value, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockUpdateQuotaUsage)(nil).Do), ctx, req)
 }
 
 // MockGetQuota is a mock of GetQuota interface.
@@ -74,18 +74,18 @@ func (m *MockGetQuota) EXPECT() *MockGetQuotaMockRecorder {
 }
 
 // Do mocks base method.
-func (m *MockGetQuota) Do(ctx context.Context, id string, data interface{}) (int64, error) {
+func (m *MockGetQuota) Do(ctx context.Context, req *andromeda.QuotaRequest) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", ctx, id, data)
+	ret := m.ctrl.Call(m, "Do", ctx, req)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Do indicates an expected call of Do.
-func (mr *MockGetQuotaMockRecorder) Do(ctx, id, data interface{}) *gomock.Call {
+func (mr *MockGetQuotaMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuota)(nil).Do), ctx, id, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuota)(nil).Do), ctx, req)
 }
 
 // MockXSetNXQuota is a mock of XSetNXQuota interface.
@@ -112,17 +112,17 @@ func (m *MockXSetNXQuota) EXPECT() *MockXSetNXQuotaMockRecorder {
 }
 
 // Do mocks base method.
-func (m *MockXSetNXQuota) Do(ctx context.Context, id string, data interface{}) error {
+func (m *MockXSetNXQuota) Do(ctx context.Context, req *andromeda.QuotaRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", ctx, id, data)
+	ret := m.ctrl.Call(m, "Do", ctx, req)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Do indicates an expected call of Do.
-func (mr *MockXSetNXQuotaMockRecorder) Do(ctx, id, data interface{}) *gomock.Call {
+func (mr *MockXSetNXQuotaMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockXSetNXQuota)(nil).Do), ctx, id, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockXSetNXQuota)(nil).Do), ctx, req)
 }
 
 // MockGetQuotaCacheParams is a mock of GetQuotaCacheParams interface.
@@ -149,16 +149,16 @@ func (m *MockGetQuotaCacheParams) EXPECT() *MockGetQuotaCacheParamsMockRecorder 
 }
 
 // Do mocks base method.
-func (m *MockGetQuotaCacheParams) Do(ctx context.Context, id string, data interface{}) (*andromeda.QuotaCacheParams, error) {
+func (m *MockGetQuotaCacheParams) Do(ctx context.Context, req *andromeda.QuotaRequest) (*andromeda.QuotaCacheParams, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", ctx, id, data)
+	ret := m.ctrl.Call(m, "Do", ctx, req)
 	ret0, _ := ret[0].(*andromeda.QuotaCacheParams)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Do indicates an expected call of Do.
-func (mr *MockGetQuotaCacheParamsMockRecorder) Do(ctx, id, data interface{}) *gomock.Call {
+func (mr *MockGetQuotaCacheParamsMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuotaCacheParams)(nil).Do), ctx, id, data)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuotaCacheParams)(nil).Do), ctx, req)
 }

@@ -13,8 +13,8 @@ type xSetNXQuota struct {
 	lockIn              time.Duration
 }
 
-func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err error) {
-	cache, err := q.getQuotaCacheParams.Do(ctx, id, data)
+func (q *xSetNXQuota) Do(ctx context.Context, req *QuotaRequest) (err error) {
+	cache, err := q.getQuotaCacheParams.Do(ctx, req)
 	if err != nil {
 		return
 	}
@@ -39,7 +39,7 @@ func (q *xSetNXQuota) Do(ctx context.Context, id string, data interface{}) (err 
 		}
 	}()
 
-	val, err := q.getQuota.Do(ctx, id, data)
+	val, err := q.getQuota.Do(ctx, req)
 	if err != nil {
 		return
 	}
@@ -69,9 +69,9 @@ type retryableXSetNXQuota struct {
 	sleepIn  time.Duration
 }
 
-func (q *retryableXSetNXQuota) Do(ctx context.Context, id string, data interface{}) error {
+func (q *retryableXSetNXQuota) Do(ctx context.Context, req *QuotaRequest) error {
 	for i := 0; i < q.maxRetry; i++ {
-		if err := q.next.Do(ctx, id, data); err == nil {
+		if err := q.next.Do(ctx, req); err == nil {
 			return nil
 		}
 
