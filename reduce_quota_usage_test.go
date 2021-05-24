@@ -72,6 +72,49 @@ func TestReduceQuotaUsage(t *testing.T) {
 		assert.True(t, errors.Is(err, andromeda.ErrReduceQuotaUsage))
 	})
 
+	t.Run("ReverseQuotaUsageWhenTotalUsageLessThanZero", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockCacheParams := &andromeda.QuotaCacheParams{
+			Key:        "key-123",
+			Expiration: 5 * time.Second,
+		}
+
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(-1), nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(999), nil)
+
+		res, err := reduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Nil(t, res)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, andromeda.ErrInvalidMinQuotaUsage))
+	})
+
+	t.Run("ErrorReverseQuotaUsageWhenTotalUsageLessThanZero", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockCacheParams := &andromeda.QuotaCacheParams{
+			Key:        "key-123",
+			Expiration: 5 * time.Second,
+		}
+		mockErr := errors.New("unexpected")
+
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(-1), nil)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(0), mockErr)
+
+		res, err := reduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Nil(t, res)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, andromeda.ErrAddQuotaUsage))
+	})
+
 	t.Run("IncrementUsageWhenNextHasError", func(t *testing.T) {
 		defer mockCtrl.Finish()
 

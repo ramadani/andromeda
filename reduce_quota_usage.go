@@ -31,19 +31,35 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res 
 		usage = q.option.ModifiedUsage
 	}
 
-	if _, err = q.cache.DecrBy(ctx, cache.Key, usage); err != nil {
+	totalUsage, err := q.cache.DecrBy(ctx, cache.Key, usage)
+	if err != nil {
 		err = fmt.Errorf("%w: %v", ErrReduceQuotaUsage, err)
+		return
+	}
+
+	if totalUsage < 0 {
+		err = NewInvalidMinQuotaUsageError(cache.Key, totalUsage)
+		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			err = er
+		}
 		return
 	}
 
 	res, err = q.next.Do(ctx, req)
 
 	if err != nil && q.option.Reversible {
-		if _, er := q.cache.IncrBy(ctx, cache.Key, usage); er != nil {
-			err = fmt.Errorf("%w: %v", ErrAddQuotaUsage, er)
+		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			err = er
 		}
 	}
 	return
+}
+
+func (q *reduceQuotaUsage) reverseUsage(ctx context.Context, key string, usage int64) error {
+	if _, er := q.cache.IncrBy(ctx, key, usage); er != nil {
+		return fmt.Errorf("%w: %v", ErrAddQuotaUsage, er)
+	}
+	return nil
 }
 
 // NewReduceQuotaUsage .
@@ -59,4 +75,9 @@ func NewReduceQuotaUsage(
 		next:                next,
 		option:              option,
 	}
+}
+
+// NewInvalidMinQuotaUsageError is a error helper for invalid minimum quota usage
+func NewInvalidMinQuotaUsageError(key string, usage int64) error {
+	return fmt.Errorf("%w: usage %d for key %s", ErrInvalidMinQuotaUsage, usage, key)
 }
