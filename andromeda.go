@@ -44,3 +44,56 @@ type XSetNXQuota interface {
 type GetQuotaCacheParams interface {
 	Do(ctx context.Context, req *QuotaRequest) (*QuotaCacheParams, error)
 }
+
+// AddQuotaUsageConfig .
+type AddQuotaUsageConfig struct {
+	Cache               Cache
+	GetQuotaLimit       GetQuota
+	GetQuotaUsage       GetQuota
+	GetQuotaCacheParams GetQuotaCacheParams
+	Next                UpdateQuotaUsage
+	Option              AddUsageOption
+	LockInGetQuotaUsage time.Duration
+}
+
+// ReduceQuotaUsageConfig .
+type ReduceQuotaUsageConfig struct {
+	Cache               Cache
+	GetQuotaUsage       GetQuota
+	GetQuotaCacheParams GetQuotaCacheParams
+	Next                UpdateQuotaUsage
+	Option              ReduceUsageOption
+	LockInGetQuotaUsage time.Duration
+}
+
+// AddQuotaUsage .
+func AddQuotaUsage(conf AddQuotaUsageConfig) UpdateQuotaUsage {
+	if conf.Next == nil {
+		conf.Next = NopUpdateQuotaUsage()
+	}
+
+	addQuotaUsage := NewAddQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaLimit, conf.Next, conf.Option)
+
+	if conf.GetQuotaUsage != nil && conf.LockInGetQuotaUsage.Milliseconds() > 0 {
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, conf.LockInGetQuotaUsage)
+		addQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), addQuotaUsage)
+	}
+
+	return addQuotaUsage
+}
+
+// ReduceQuotaUsage .
+func ReduceQuotaUsage(conf ReduceQuotaUsageConfig) UpdateQuotaUsage {
+	if conf.Next == nil {
+		conf.Next = NopUpdateQuotaUsage()
+	}
+
+	reduceQuotaUsage := NewReduceQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.Next, conf.Option)
+
+	if conf.GetQuotaUsage != nil && conf.LockInGetQuotaUsage.Milliseconds() > 0 {
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, conf.LockInGetQuotaUsage)
+		reduceQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), reduceQuotaUsage)
+	}
+
+	return reduceQuotaUsage
+}
