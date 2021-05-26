@@ -9,6 +9,45 @@ import (
 	"time"
 )
 
+func TestGetQuotaUsageConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		conf     andromeda.GetQuotaUsageConfig
+		lockIn   time.Duration
+		maxRetry int
+		retryIn  time.Duration
+	}{
+		{
+			name:     "Empty",
+			conf:     andromeda.GetQuotaUsageConfig{},
+			lockIn:   time.Second * 1,
+			maxRetry: 1,
+			retryIn:  time.Millisecond * 50,
+		},
+		{
+			name: "NotEmpty",
+			conf: andromeda.GetQuotaUsageConfig{
+				LockIn:   time.Second * 3,
+				MaxRetry: 10,
+				RetryIn:  time.Millisecond * 100,
+			},
+			lockIn:   time.Second * 3,
+			maxRetry: 10,
+			retryIn:  time.Millisecond * 100,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			conf := test.conf
+
+			assert.Equal(t, test.lockIn, conf.GetLockIn())
+			assert.Equal(t, test.maxRetry, conf.GetMaxRetry())
+			assert.Equal(t, test.retryIn, conf.GetRetryIn())
+		})
+	}
+}
+
 func TestAndromedaAddQuotaUsage(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockCache := mocks.NewMockCache(mockCtrl)
@@ -60,7 +99,28 @@ func TestAndromedaAddQuotaUsage(t *testing.T) {
 			Cache:               mockCache,
 			GetQuotaLimit:       mockGetQuotaLimit,
 			GetQuotaUsage:       mockGetQuotaUsage,
-			LockInGetQuotaUsage: 5 * time.Second,
+			GetQuotaCacheParams: mockGetQuotaCacheParams,
+			Next:                mockNext,
+		}
+
+		addQuotaUsage := andromeda.AddQuotaUsage(conf)
+
+		_, ok := addQuotaUsage.(andromeda.UpdateQuotaUsage)
+
+		assert.True(t, ok)
+	})
+
+	t.Run("ConfigWithGetQuotaUsageAndTheirConfig", func(t *testing.T) {
+		mockNext := mocks.NewMockUpdateQuotaUsage(mockCtrl)
+		mockGetQuotaUsage := mocks.NewMockGetQuota(mockCtrl)
+
+		defer mockCtrl.Finish()
+
+		conf := andromeda.AddQuotaUsageConfig{
+			Cache:               mockCache,
+			GetQuotaLimit:       mockGetQuotaLimit,
+			GetQuotaUsage:       mockGetQuotaUsage,
+			GetQuotaUsageConfig: andromeda.GetQuotaUsageConfig{},
 			GetQuotaCacheParams: mockGetQuotaCacheParams,
 			Next:                mockNext,
 		}
@@ -120,7 +180,27 @@ func TestAndromedaReduceQuotaUsage(t *testing.T) {
 		conf := andromeda.ReduceQuotaUsageConfig{
 			Cache:               mockCache,
 			GetQuotaUsage:       mockGetQuotaUsage,
-			LockInGetQuotaUsage: 5 * time.Second,
+			GetQuotaCacheParams: mockGetQuotaCacheParams,
+			Next:                mockNext,
+		}
+
+		reduceQuotaUsage := andromeda.ReduceQuotaUsage(conf)
+
+		_, ok := reduceQuotaUsage.(andromeda.UpdateQuotaUsage)
+
+		assert.True(t, ok)
+	})
+
+	t.Run("ConfigWithGetQuotaUsageAndTheirConfig", func(t *testing.T) {
+		mockNext := mocks.NewMockUpdateQuotaUsage(mockCtrl)
+		mockGetQuotaUsage := mocks.NewMockGetQuota(mockCtrl)
+
+		defer mockCtrl.Finish()
+
+		conf := andromeda.ReduceQuotaUsageConfig{
+			Cache:               mockCache,
+			GetQuotaUsage:       mockGetQuotaUsage,
+			GetQuotaUsageConfig: andromeda.GetQuotaUsageConfig{},
 			GetQuotaCacheParams: mockGetQuotaCacheParams,
 			Next:                mockNext,
 		}
