@@ -9,6 +9,7 @@ import (
 type AddUsageOption struct {
 	Reversible    bool
 	ModifiedUsage int64
+	Listener      UpdateQuotaUsageListener
 }
 
 type addQuotaUsage struct {
@@ -20,8 +21,20 @@ type addQuotaUsage struct {
 }
 
 func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res interface{}, err error) {
-	quotaReq := &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data}
+	var totalUsage int64
+	var isNextErr bool
 
+	defer func() {
+		if q.option.Listener != nil && !isNextErr {
+			if err == nil {
+				q.option.Listener.OnSuccess(ctx, req, totalUsage)
+			} else {
+				q.option.Listener.OnError(ctx, req, err)
+			}
+		}
+	}()
+
+	quotaReq := &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data}
 	cache, err := q.getQuotaCacheParams.Do(ctx, quotaReq)
 	if err == ErrQuotaNotFound {
 		return q.next.Do(ctx, req)
@@ -39,7 +52,7 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 		return
 	}
 
-	totalUsage, err := q.cache.IncrBy(ctx, cache.Key, usage)
+	totalUsage, err = q.cache.IncrBy(ctx, cache.Key, usage)
 	if err != nil {
 		err = fmt.Errorf("%w: %v", ErrAddQuotaUsage, err)
 		return
@@ -53,14 +66,19 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 		return
 	}
 
-	res, err = q.next.Do(ctx, req)
+	res, _err := q.next.Do(ctx, req)
+	if _err != nil {
+		isNextErr = true
 
-	if err != nil && q.option.Reversible {
-		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
-			err = er
+		if q.option.Reversible {
+			if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+				err, _err = er, er
+				isNextErr = false
+			}
 		}
 	}
-	return
+
+	return res, _err
 }
 
 func (q *addQuotaUsage) reverseUsage(ctx context.Context, key string, usage int64) error {

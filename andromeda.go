@@ -30,6 +30,12 @@ type UpdateQuotaUsage interface {
 	Do(ctx context.Context, req *QuotaUsageRequest) (interface{}, error)
 }
 
+// UpdateQuotaUsageListener listen on success or error when updating quota usage
+type UpdateQuotaUsageListener interface {
+	OnSuccess(ctx context.Context, req *QuotaUsageRequest, updatedUsage int64)
+	OnError(ctx context.Context, req *QuotaUsageRequest, err error)
+}
+
 // GetQuota is a contract to get quota limit or usage
 type GetQuota interface {
 	Do(ctx context.Context, req *QuotaRequest) (int64, error)

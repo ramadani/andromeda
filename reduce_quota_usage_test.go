@@ -3,6 +3,7 @@ package andromeda_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/ramadani/andromeda"
 	"github.com/ramadani/andromeda/mocks"
@@ -197,6 +198,82 @@ func TestReduceQuotaUsage(t *testing.T) {
 		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
 		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, opt.ModifiedUsage).Return(int64(0), nil)
 		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
+
+		res, err := newReduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Equal(t, mockRes, res)
+		assert.Nil(t, err)
+	})
+
+	t.Run("ListenOnError", func(t *testing.T) {
+		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
+		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockCacheParams := &andromeda.QuotaCacheParams{
+			Key:        "key-123",
+			Expiration: 5 * time.Second,
+		}
+		mockErr := errors.New("unexpected")
+		theErr := fmt.Errorf("%w: %v", andromeda.ErrReduceQuotaUsage, mockErr)
+
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(0), mockErr)
+		mockListener.EXPECT().OnError(ctx, quotaUsageReq, theErr)
+
+		res, err := newReduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Nil(t, res)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, andromeda.ErrReduceQuotaUsage))
+	})
+
+	t.Run("NoListenOnNextError", func(t *testing.T) {
+		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
+		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockCacheParams := &andromeda.QuotaCacheParams{
+			Key:        "key-123",
+			Expiration: 5 * time.Second,
+		}
+		mockErr := errors.New("unexpected")
+
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(0), nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(nil, mockErr)
+		mockCache.EXPECT().IncrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(quotaUsageReq.Usage, nil)
+
+		res, err := newReduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Nil(t, res)
+		assert.EqualError(t, err, mockErr.Error())
+	})
+
+	t.Run("ListenOnSuccess", func(t *testing.T) {
+		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
+		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockCacheParams := &andromeda.QuotaCacheParams{
+			Key:        "key-123",
+			Expiration: 5 * time.Second,
+		}
+		mockRes := "result"
+
+		mockGetQuotaCacheParams.EXPECT().Do(ctx, quotaReq).Return(mockCacheParams, nil)
+		mockCache.EXPECT().DecrBy(ctx, mockCacheParams.Key, quotaUsageReq.Usage).Return(int64(10), nil)
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
+		mockListener.EXPECT().OnSuccess(ctx, quotaUsageReq, int64(10))
 
 		res, err := newReduceQuotaUsage.Do(ctx, quotaUsageReq)
 
