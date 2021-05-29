@@ -7,8 +7,8 @@ import (
 
 // AddUsageOption .
 type AddUsageOption struct {
-	Reversible    bool
 	ModifiedUsage int64
+	Irreversible  bool // does not reverse when the next update quota usage has an error
 	Listener      UpdateQuotaUsageListener
 }
 
@@ -70,7 +70,7 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 	if _err != nil {
 		isNextErr = true
 
-		if q.option.Reversible {
+		if !q.option.Irreversible {
 			if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
 				err, _err = er, er
 				isNextErr = false
