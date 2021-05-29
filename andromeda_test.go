@@ -256,6 +256,29 @@ func BenchmarkAddQuotaUsage(b *testing.B) {
 	})
 }
 
+func BenchmarkReduceQuotaUsage(b *testing.B) {
+	ctx := context.TODO()
+	miniRedis, err := miniredis.Run()
+	assert.Nil(b, err)
+
+	redisCache := cache.NewCacheRedis(redis.NewClient(&redis.Options{Addr: miniRedis.Addr()}))
+
+	reduceQuotaUsage := andromeda.ReduceQuotaUsage(andromeda.ReduceQuotaUsageConfig{
+		Cache:               redisCache,
+		GetQuotaCacheParams: &mockGetQuotaCacheParams{keyFormat: "quota-usage-3-%s"},
+		GetQuotaUsage:       &mockGetQuota{value: 10000000},
+		GetQuotaUsageConfig: andromeda.GetQuotaUsageConfig{
+			LockIn:   time.Second * 3,
+			MaxRetry: 50,
+			RetryIn:  time.Millisecond * 100,
+		},
+	})
+
+	for i := 0; i < b.N; i++ {
+		_, _ = reduceQuotaUsage.Do(ctx, &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: 1})
+	}
+}
+
 type mockGetQuota struct {
 	value int64
 }
