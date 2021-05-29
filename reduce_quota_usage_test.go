@@ -18,7 +18,7 @@ func TestReduceQuotaUsage(t *testing.T) {
 	mockCache := mocks.NewMockCache(mockCtrl)
 	mockGetQuotaCacheParams := mocks.NewMockGetQuotaCacheParams(mockCtrl)
 	mockNext := mocks.NewMockUpdateQuotaUsage(mockCtrl)
-	option := andromeda.ReduceUsageOption{Reversible: true}
+	option := andromeda.ReduceUsageOption{}
 	reduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, option)
 
 	t.Run("ErrorGetQuotaCacheParam", func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestReduceQuotaUsage(t *testing.T) {
 	})
 
 	t.Run("SucceedReduceQuotaUsageWithModifiedUsage", func(t *testing.T) {
-		opt := andromeda.ReduceUsageOption{Reversible: true, ModifiedUsage: 1}
+		opt := andromeda.ReduceUsageOption{ModifiedUsage: 1}
 		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -207,7 +207,7 @@ func TestReduceQuotaUsage(t *testing.T) {
 
 	t.Run("ListenOnError", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.ReduceUsageOption{Listener: mockListener}
 		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -233,7 +233,7 @@ func TestReduceQuotaUsage(t *testing.T) {
 
 	t.Run("NoListenOnNextError", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.ReduceUsageOption{Listener: mockListener}
 		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -258,7 +258,7 @@ func TestReduceQuotaUsage(t *testing.T) {
 
 	t.Run("ListenOnSuccess", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.ReduceUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.ReduceUsageOption{Listener: mockListener}
 		newReduceQuotaUsage := andromeda.NewReduceQuotaUsage(mockCache, mockGetQuotaCacheParams, mockNext, opt)
 		defer mockCtrl.Finish()
 

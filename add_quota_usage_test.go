@@ -19,7 +19,7 @@ func TestAddQuotaUsage(t *testing.T) {
 	mockGetQuotaCacheParams := mocks.NewMockGetQuotaCacheParams(mockCtrl)
 	mockGetQuotaLimit := mocks.NewMockGetQuota(mockCtrl)
 	mockNext := mocks.NewMockUpdateQuotaUsage(mockCtrl)
-	option := andromeda.AddUsageOption{Reversible: true}
+	option := andromeda.AddUsageOption{}
 	addQuotaUsage := andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, option)
 
 	t.Run("ErrorGetQuotaCacheParam", func(t *testing.T) {
@@ -221,7 +221,7 @@ func TestAddQuotaUsage(t *testing.T) {
 	})
 
 	t.Run("SucceedAddQuotaUsageWithModifiedUsage", func(t *testing.T) {
-		opt := andromeda.AddUsageOption{Reversible: true, ModifiedUsage: 1}
+		opt := andromeda.AddUsageOption{ModifiedUsage: 1}
 		newAddQuotaUsage := andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -248,7 +248,7 @@ func TestAddQuotaUsage(t *testing.T) {
 
 	t.Run("ListenOnError", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.AddUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.AddUsageOption{Listener: mockListener}
 		newAddQuotaUsage := andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -278,7 +278,7 @@ func TestAddQuotaUsage(t *testing.T) {
 
 	t.Run("NoListenOnNextError", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.AddUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.AddUsageOption{Listener: mockListener}
 		newAddQuotaUsage := andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, opt)
 		defer mockCtrl.Finish()
 
@@ -306,7 +306,7 @@ func TestAddQuotaUsage(t *testing.T) {
 
 	t.Run("ListenOnSuccess", func(t *testing.T) {
 		mockListener := mocks.NewMockUpdateQuotaUsageListener(mockCtrl)
-		opt := andromeda.AddUsageOption{Reversible: true, Listener: mockListener}
+		opt := andromeda.AddUsageOption{Listener: mockListener}
 		newAddQuotaUsage := andromeda.NewAddQuotaUsage(mockCache, mockGetQuotaCacheParams, mockGetQuotaLimit, mockNext, opt)
 		defer mockCtrl.Finish()
 
