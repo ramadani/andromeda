@@ -104,6 +104,7 @@ func main() {
 	})
 
 	claimVoucher := internal.NewClaimVoucher(voucherRepo, historyRepo, addVoucherUsage, reduceVoucherUsage)
+	unClaimVoucher := internal.NewUnClaimVoucher(voucherRepo, historyRepo, addVoucherUsage, reduceVoucherUsage)
 
 	// sync voucher usage
 	go func() {
@@ -116,12 +117,14 @@ func main() {
 			for _, voucher := range vouchers {
 				usage, err := getCachedVoucherQuotaUsage.Do(ctx, &andromeda.QuotaRequest{QuotaID: voucher.ID})
 				if err == nil {
-					if usage > 0 {
-						voucher.Usage = usage
-						err = voucherRepo.Update(ctx, voucher)
-						if err != nil {
-							log.Println("err update voucher", err)
-						}
+					voucher.Usage = usage
+					err = voucherRepo.Update(ctx, voucher)
+					if err != nil {
+						log.Println("err update voucher", err)
+					}
+				} else {
+					if voucher.Usage > 0 {
+						log.Println(err)
 					}
 				}
 			}
@@ -153,6 +156,20 @@ func main() {
 		}
 
 		res, err := claimVoucher.Do(ctx, input.Code, input.UserID)
+		if err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, res)
+	})
+
+	e.POST("/unClaim", func(c echo.Context) error {
+		ctx := c.Request().Context()
+		input := new(dataReq)
+		if err := c.Bind(&input); err != nil {
+			return err
+		}
+
+		res, err := unClaimVoucher.Do(ctx, input.Code, input.UserID)
 		if err != nil {
 			return err
 		}
