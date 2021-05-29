@@ -1,8 +1,13 @@
 package andromeda_test
 
 import (
+	"context"
+	"fmt"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang/mock/gomock"
 	"github.com/ramadani/andromeda"
+	"github.com/ramadani/andromeda/cache"
 	"github.com/ramadani/andromeda/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -211,4 +216,61 @@ func TestAndromedaReduceQuotaUsage(t *testing.T) {
 
 		assert.True(t, ok)
 	})
+}
+
+func BenchmarkAddQuotaUsage(b *testing.B) {
+	ctx := context.TODO()
+	miniRedis, err := miniredis.Run()
+	assert.Nil(b, err)
+
+	redisCache := cache.NewCacheRedis(redis.NewClient(&redis.Options{Addr: miniRedis.Addr()}))
+
+	b.Run("WithoutGetQuotaUsage", func(b *testing.B) {
+		addQuotaUsage := andromeda.AddQuotaUsage(andromeda.AddQuotaUsageConfig{
+			Cache:               redisCache,
+			GetQuotaCacheParams: &mockGetQuotaCacheParams{keyFormat: "quota-usage-1-%s"},
+			GetQuotaLimit:       &mockGetQuota{value: 10000000},
+		})
+
+		for i := 0; i < b.N; i++ {
+			_, _ = addQuotaUsage.Do(ctx, &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: 1})
+		}
+	})
+
+	b.Run("WithGetQuotaUsage", func(b *testing.B) {
+		addQuotaUsage := andromeda.AddQuotaUsage(andromeda.AddQuotaUsageConfig{
+			Cache:               redisCache,
+			GetQuotaCacheParams: &mockGetQuotaCacheParams{keyFormat: "quota-usage-2-%s"},
+			GetQuotaLimit:       &mockGetQuota{value: 10000000},
+			GetQuotaUsage:       &mockGetQuota{value: 0},
+			GetQuotaUsageConfig: andromeda.GetQuotaUsageConfig{
+				LockIn:   time.Second * 3,
+				MaxRetry: 50,
+				RetryIn:  time.Millisecond * 100,
+			},
+		})
+
+		for i := 0; i < b.N; i++ {
+			_, _ = addQuotaUsage.Do(ctx, &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: 1})
+		}
+	})
+}
+
+type mockGetQuota struct {
+	value int64
+}
+
+func (q *mockGetQuota) Do(_ context.Context, _ *andromeda.QuotaRequest) (int64, error) {
+	return q.value, nil
+}
+
+type mockGetQuotaCacheParams struct {
+	keyFormat string
+}
+
+func (q *mockGetQuotaCacheParams) Do(_ context.Context, req *andromeda.QuotaRequest) (*andromeda.QuotaCacheParams, error) {
+	return &andromeda.QuotaCacheParams{
+		Key:        fmt.Sprintf(q.keyFormat, req.QuotaID),
+		Expiration: time.Second * 30,
+	}, nil
 }
