@@ -66,7 +66,7 @@ func NewXSetNXQuota(
 type retryableXSetNXQuota struct {
 	next     XSetNXQuota
 	maxRetry int
-	sleepIn  time.Duration
+	retryIn  time.Duration
 }
 
 func (q *retryableXSetNXQuota) Do(ctx context.Context, req *QuotaRequest) error {
@@ -76,7 +76,7 @@ func (q *retryableXSetNXQuota) Do(ctx context.Context, req *QuotaRequest) error 
 		}
 
 		if i+1 != q.maxRetry {
-			time.Sleep(q.sleepIn)
+			time.Sleep(q.retryIn)
 		}
 	}
 
@@ -88,6 +88,6 @@ func NewRetryableXSetNXQuota(next XSetNXQuota, maxRetry int, sleepIn time.Durati
 	return &retryableXSetNXQuota{
 		next:     next,
 		maxRetry: maxRetry,
-		sleepIn:  sleepIn,
+		retryIn:  sleepIn,
 	}
 }

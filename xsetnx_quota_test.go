@@ -202,8 +202,8 @@ func TestRetryableXSetNXQuota(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	mockNext := mocks.NewMockXSetNXQuota(mockCtrl)
 	maxRetry := 5
-	sleepIn := time.Duration(0)
-	retryable := andromeda.NewRetryableXSetNXQuota(mockNext, maxRetry, sleepIn)
+	retryIn := time.Duration(0)
+	retryable := andromeda.NewRetryableXSetNXQuota(mockNext, maxRetry, retryIn)
 
 	t.Run("ErrMaxRetryExceeded", func(t *testing.T) {
 		req := &andromeda.QuotaRequest{QuotaID: "123"}

@@ -30,6 +30,12 @@ type UpdateQuotaUsage interface {
 	Do(ctx context.Context, req *QuotaUsageRequest) (interface{}, error)
 }
 
+// UpdateQuotaUsageListener listen on success or error when updating quota usage
+type UpdateQuotaUsageListener interface {
+	OnSuccess(ctx context.Context, req *QuotaUsageRequest, updatedUsage int64)
+	OnError(ctx context.Context, req *QuotaUsageRequest, err error)
+}
+
 // GetQuota is a contract to get quota limit or usage
 type GetQuota interface {
 	Do(ctx context.Context, req *QuotaRequest) (int64, error)
@@ -47,23 +53,53 @@ type GetQuotaCacheParams interface {
 
 // AddQuotaUsageConfig .
 type AddQuotaUsageConfig struct {
+	Next                UpdateQuotaUsage
 	Cache               Cache
+	GetQuotaCacheParams GetQuotaCacheParams
 	GetQuotaLimit       GetQuota
 	GetQuotaUsage       GetQuota
-	GetQuotaCacheParams GetQuotaCacheParams
-	Next                UpdateQuotaUsage
+	GetQuotaUsageConfig GetQuotaUsageConfig
 	Option              AddUsageOption
-	LockInGetQuotaUsage time.Duration
 }
 
 // ReduceQuotaUsageConfig .
 type ReduceQuotaUsageConfig struct {
-	Cache               Cache
-	GetQuotaUsage       GetQuota
-	GetQuotaCacheParams GetQuotaCacheParams
 	Next                UpdateQuotaUsage
+	Cache               Cache
+	GetQuotaCacheParams GetQuotaCacheParams
+	GetQuotaUsage       GetQuota
+	GetQuotaUsageConfig GetQuotaUsageConfig
 	Option              ReduceUsageOption
-	LockInGetQuotaUsage time.Duration
+}
+
+// GetQuotaUsageConfig .
+type GetQuotaUsageConfig struct {
+	LockIn   time.Duration
+	MaxRetry int
+	RetryIn  time.Duration
+}
+
+// GetLockIn .
+func (q GetQuotaUsageConfig) GetLockIn() time.Duration {
+	if q.LockIn.Milliseconds() > 0 {
+		return q.LockIn
+	}
+	return time.Second * 1
+}
+
+func (q GetQuotaUsageConfig) GetMaxRetry() int {
+	if q.MaxRetry > 0 {
+		return q.MaxRetry
+	}
+	return 1
+}
+
+// GetRetryIn .
+func (q GetQuotaUsageConfig) GetRetryIn() time.Duration {
+	if q.RetryIn.Milliseconds() > 0 {
+		return q.RetryIn
+	}
+	return time.Millisecond * 50
 }
 
 // AddQuotaUsage .
@@ -74,8 +110,10 @@ func AddQuotaUsage(conf AddQuotaUsageConfig) UpdateQuotaUsage {
 
 	addQuotaUsage := NewAddQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaLimit, conf.Next, conf.Option)
 
-	if conf.GetQuotaUsage != nil && conf.LockInGetQuotaUsage.Milliseconds() > 0 {
-		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, conf.LockInGetQuotaUsage)
+	if conf.GetQuotaUsage != nil {
+		getUsageConf := conf.GetQuotaUsageConfig
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, getUsageConf.GetLockIn())
+		xSetNXQuotaUsage = NewRetryableXSetNXQuota(xSetNXQuotaUsage, getUsageConf.GetMaxRetry(), getUsageConf.GetRetryIn())
 		addQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), addQuotaUsage)
 	}
 
@@ -90,8 +128,10 @@ func ReduceQuotaUsage(conf ReduceQuotaUsageConfig) UpdateQuotaUsage {
 
 	reduceQuotaUsage := NewReduceQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.Next, conf.Option)
 
-	if conf.GetQuotaUsage != nil && conf.LockInGetQuotaUsage.Milliseconds() > 0 {
-		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, conf.LockInGetQuotaUsage)
+	if conf.GetQuotaUsage != nil {
+		getUsageConf := conf.GetQuotaUsageConfig
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, getUsageConf.GetLockIn())
+		xSetNXQuotaUsage = NewRetryableXSetNXQuota(xSetNXQuotaUsage, getUsageConf.GetMaxRetry(), getUsageConf.GetRetryIn())
 		reduceQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), reduceQuotaUsage)
 	}
 

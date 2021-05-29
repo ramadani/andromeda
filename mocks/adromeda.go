@@ -50,6 +50,53 @@ func (mr *MockUpdateQuotaUsageMockRecorder) Do(ctx, req interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockUpdateQuotaUsage)(nil).Do), ctx, req)
 }
 
+// MockUpdateQuotaUsageListener is a mock of UpdateQuotaUsageListener interface.
+type MockUpdateQuotaUsageListener struct {
+	ctrl     *gomock.Controller
+	recorder *MockUpdateQuotaUsageListenerMockRecorder
+}
+
+// MockUpdateQuotaUsageListenerMockRecorder is the mock recorder for MockUpdateQuotaUsageListener.
+type MockUpdateQuotaUsageListenerMockRecorder struct {
+	mock *MockUpdateQuotaUsageListener
+}
+
+// NewMockUpdateQuotaUsageListener creates a new mock instance.
+func NewMockUpdateQuotaUsageListener(ctrl *gomock.Controller) *MockUpdateQuotaUsageListener {
+	mock := &MockUpdateQuotaUsageListener{ctrl: ctrl}
+	mock.recorder = &MockUpdateQuotaUsageListenerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUpdateQuotaUsageListener) EXPECT() *MockUpdateQuotaUsageListenerMockRecorder {
+	return m.recorder
+}
+
+// OnError mocks base method.
+func (m *MockUpdateQuotaUsageListener) OnError(ctx context.Context, req *andromeda.QuotaUsageRequest, err error) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "OnError", ctx, req, err)
+}
+
+// OnError indicates an expected call of OnError.
+func (mr *MockUpdateQuotaUsageListenerMockRecorder) OnError(ctx, req, err interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnError", reflect.TypeOf((*MockUpdateQuotaUsageListener)(nil).OnError), ctx, req, err)
+}
+
+// OnSuccess mocks base method.
+func (m *MockUpdateQuotaUsageListener) OnSuccess(ctx context.Context, req *andromeda.QuotaUsageRequest, updatedUsage int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "OnSuccess", ctx, req, updatedUsage)
+}
+
+// OnSuccess indicates an expected call of OnSuccess.
+func (mr *MockUpdateQuotaUsageListenerMockRecorder) OnSuccess(ctx, req, updatedUsage interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnSuccess", reflect.TypeOf((*MockUpdateQuotaUsageListener)(nil).OnSuccess), ctx, req, updatedUsage)
+}
+
 // MockGetQuota is a mock of GetQuota interface.
 type MockGetQuota struct {
 	ctrl     *gomock.Controller
