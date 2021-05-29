@@ -22,14 +22,21 @@ import (
 )
 
 type Config struct {
-	Address string        `yaml:"address"`
-	DB      string        `yaml:"db"`
-	SyncIn  time.Duration `yaml:"syncIn"`
-	Redis   RedisConfig   `yaml:"redis"`
+	Address          string           `yaml:"address"`
+	DB               string           `yaml:"db"`
+	SyncIn           time.Duration    `yaml:"syncIn"`
+	Redis            RedisConfig      `yaml:"redis"`
+	QuotaUsageConfig QuotaUsageConfig `yaml:"quotaUsage"`
 }
 
 type RedisConfig struct {
 	Address string `yaml:"address"`
+}
+
+type QuotaUsageConfig struct {
+	LockIn   time.Duration `yaml:"lockIn"`
+	MaxRetry int           `yaml:"maxRetry"`
+	RetryIn  time.Duration `yaml:"retryIn"`
 }
 
 func main() {
@@ -73,32 +80,28 @@ func main() {
 	keyUsageFormat := "voucher-quota-usage-%s"
 	getVoucherQuotaUsageParams := internal.NewGetVoucherQuotaParams(keyUsageFormat)
 	getVoucherQuotaLimit := internal.NewGetVoucherQuotaLimit(voucherRepo)
-	getCachedVoucherQuotaUsage := andromeda.NewGetCachedQuota(cacheRedis, getVoucherQuotaUsageParams)
-
 	getVoucherQuotaUsage := internal.NewGetVoucherQuotaUsage(voucherRepo)
-	lockIn := time.Second * 5
-	maxRetry := 10
-	retryIn := time.Millisecond * 100
+	getCachedVoucherQuotaUsage := andromeda.NewGetCachedQuota(cacheRedis, getVoucherQuotaUsageParams)
+	getVoucherQuotaUsageConf := andromeda.GetQuotaUsageConfig{
+		LockIn:   conf.QuotaUsageConfig.LockIn,
+		MaxRetry: conf.QuotaUsageConfig.MaxRetry,
+		RetryIn:  conf.QuotaUsageConfig.RetryIn,
+	}
 
-	existsOrSetIfNotExistsVoucherQuotaUsage := andromeda.NewXSetNXQuota(cacheRedis, getVoucherQuotaUsageParams, getVoucherQuotaUsage, lockIn)
-	existsOrSetIfNotExistsVoucherQuotaUsage = andromeda.NewRetryableXSetNXQuota(existsOrSetIfNotExistsVoucherQuotaUsage, maxRetry, retryIn)
-	existsOrSetIfNotExistsVoucherQuotaUsageMiddleware := andromeda.NewXSetNXQuotaUsage(existsOrSetIfNotExistsVoucherQuotaUsage)
+	addVoucherUsage := andromeda.AddQuotaUsage(andromeda.AddQuotaUsageConfig{
+		Cache:               cacheRedis,
+		GetQuotaCacheParams: getVoucherQuotaUsageParams,
+		GetQuotaLimit:       getVoucherQuotaLimit,
+		GetQuotaUsage:       getVoucherQuotaUsage,
+		GetQuotaUsageConfig: getVoucherQuotaUsageConf,
+	})
 
-	addVoucherUsage := andromeda.NewAddQuotaUsage(
-		cacheRedis,
-		getVoucherQuotaUsageParams,
-		getVoucherQuotaLimit,
-		andromeda.NopUpdateQuotaUsage(),
-		andromeda.AddUsageOption{},
-	)
-	addVoucherUsage = andromeda.NewUpdateQuotaUsageMiddleware(existsOrSetIfNotExistsVoucherQuotaUsageMiddleware, addVoucherUsage)
-	reduceVoucherUsage := andromeda.NewReduceQuotaUsage(
-		cacheRedis,
-		getVoucherQuotaUsageParams,
-		andromeda.NopUpdateQuotaUsage(),
-		andromeda.ReduceUsageOption{},
-	)
-	reduceVoucherUsage = andromeda.NewUpdateQuotaUsageMiddleware(existsOrSetIfNotExistsVoucherQuotaUsageMiddleware, reduceVoucherUsage)
+	reduceVoucherUsage := andromeda.ReduceQuotaUsage(andromeda.ReduceQuotaUsageConfig{
+		Cache:               cacheRedis,
+		GetQuotaCacheParams: getVoucherQuotaUsageParams,
+		GetQuotaUsage:       getVoucherQuotaUsage,
+		GetQuotaUsageConfig: getVoucherQuotaUsageConf,
+	})
 
 	claimVoucher := internal.NewClaimVoucher(voucherRepo, historyRepo, addVoucherUsage, reduceVoucherUsage)
 
@@ -133,22 +136,26 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	type dataReq struct {
+		Code   string `json:"code"`
+		UserID string `json:"userId"`
+	}
+
 	e.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	})
 
 	e.POST("/claim", func(c echo.Context) error {
 		ctx := c.Request().Context()
-		input := make(map[string]string)
+		input := new(dataReq)
 		if err := c.Bind(&input); err != nil {
 			return err
 		}
 
-		res, err := claimVoucher.Do(ctx, input["code"], input["userId"])
+		res, err := claimVoucher.Do(ctx, input.Code, input.UserID)
 		if err != nil {
 			return err
 		}
-
 		return c.JSON(http.StatusOK, res)
 	})
 

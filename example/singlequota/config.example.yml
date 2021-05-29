@@ -1,0 +1,12 @@
+address: :3000
+db: "root:secret@tcp(127.0.0.1:3306)/dbname?parseTime=true&loc=Local"
+
+syncIn: 3s
+
+redis:
+  address: "127.0.0.1:6379"
+
+quotaUsage:
+  lockIn: 3s
+  maxRetry: 50
+  retryIn: 100ms
