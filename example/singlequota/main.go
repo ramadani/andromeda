@@ -78,10 +78,11 @@ func main() {
 	cacheRedis := cache.NewCacheRedis(redisClient)
 
 	keyUsageFormat := "voucher-quota-usage-%s"
-	getVoucherQuotaUsageParams := internal.NewGetVoucherQuotaParams(keyUsageFormat)
 	getVoucherQuotaLimit := internal.NewGetVoucherQuotaLimit(voucherRepo)
 	getVoucherQuotaUsage := internal.NewGetVoucherQuotaUsage(voucherRepo)
-	getCachedVoucherQuotaUsage := andromeda.NewGetCachedQuota(cacheRedis, getVoucherQuotaUsageParams)
+	getVoucherQuotaUsageKey := internal.NewGetVoucherQuotaUsageKey(keyUsageFormat)
+	getVoucherQuotaUsageExpiration := internal.NewGetVoucherQuotaUsageExpiration()
+	getCachedVoucherQuotaUsage := andromeda.NewGetCachedQuota(cacheRedis, getVoucherQuotaUsageKey)
 	getVoucherQuotaUsageConf := andromeda.GetQuotaUsageConfig{
 		LockIn:   conf.QuotaUsageConfig.LockIn,
 		MaxRetry: conf.QuotaUsageConfig.MaxRetry,
@@ -89,18 +90,20 @@ func main() {
 	}
 
 	addVoucherUsage := andromeda.AddQuotaUsage(andromeda.AddQuotaUsageConfig{
-		Cache:               cacheRedis,
-		GetQuotaCacheParams: getVoucherQuotaUsageParams,
-		GetQuotaLimit:       getVoucherQuotaLimit,
-		GetQuotaUsage:       getVoucherQuotaUsage,
-		GetQuotaUsageConfig: getVoucherQuotaUsageConf,
+		Cache:                   cacheRedis,
+		GetQuotaLimit:           getVoucherQuotaLimit,
+		GetQuotaUsage:           getVoucherQuotaUsage,
+		GetQuotaUsageKey:        getVoucherQuotaUsageKey,
+		GetQuotaUsageExpiration: getVoucherQuotaUsageExpiration,
+		GetQuotaUsageConfig:     getVoucherQuotaUsageConf,
 	})
 
 	reduceVoucherUsage := andromeda.ReduceQuotaUsage(andromeda.ReduceQuotaUsageConfig{
-		Cache:               cacheRedis,
-		GetQuotaCacheParams: getVoucherQuotaUsageParams,
-		GetQuotaUsage:       getVoucherQuotaUsage,
-		GetQuotaUsageConfig: getVoucherQuotaUsageConf,
+		Cache:                   cacheRedis,
+		GetQuotaUsage:           getVoucherQuotaUsage,
+		GetQuotaUsageKey:        getVoucherQuotaUsageKey,
+		GetQuotaUsageExpiration: getVoucherQuotaUsageExpiration,
+		GetQuotaUsageConfig:     getVoucherQuotaUsageConf,
 	})
 
 	claimVoucher := internal.NewClaimVoucher(voucherRepo, historyRepo, addVoucherUsage, reduceVoucherUsage)
