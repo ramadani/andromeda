@@ -88,6 +88,7 @@ func main() {
 		MaxRetry: conf.QuotaUsageConfig.MaxRetry,
 		RetryIn:  conf.QuotaUsageConfig.RetryIn,
 	}
+	updateVoucherQuotaUsageListener := internal.NewUpdateVoucherQuotaUsageListener()
 
 	addVoucherUsage := andromeda.AddQuotaUsage(andromeda.AddQuotaUsageConfig{
 		Cache:                   cacheRedis,
@@ -96,6 +97,9 @@ func main() {
 		GetQuotaUsageKey:        getVoucherQuotaUsageKey,
 		GetQuotaUsageExpiration: getVoucherQuotaUsageExpiration,
 		GetQuotaUsageConfig:     getVoucherQuotaUsageConf,
+		Option: andromeda.AddUsageOption{
+			Listener: updateVoucherQuotaUsageListener,
+		},
 	})
 
 	reduceVoucherUsage := andromeda.ReduceQuotaUsage(andromeda.ReduceQuotaUsageConfig{
@@ -104,6 +108,9 @@ func main() {
 		GetQuotaUsageKey:        getVoucherQuotaUsageKey,
 		GetQuotaUsageExpiration: getVoucherQuotaUsageExpiration,
 		GetQuotaUsageConfig:     getVoucherQuotaUsageConf,
+		Option: andromeda.ReduceUsageOption{
+			Listener: updateVoucherQuotaUsageListener,
+		},
 	})
 
 	claimVoucher := internal.NewClaimVoucher(voucherRepo, historyRepo, addVoucherUsage, reduceVoucherUsage)
