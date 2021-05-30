@@ -18,12 +18,6 @@ type QuotaUsageRequest struct {
 	Data    interface{}
 }
 
-// QuotaCacheParams is a model for quota cache parameters
-type QuotaCacheParams struct {
-	Key        string
-	Expiration time.Duration
-}
-
 // UpdateQuotaUsage is a contract to update quota usage
 // example: add quota usage or reduce quota usage
 type UpdateQuotaUsage interface {
@@ -41,35 +35,42 @@ type GetQuota interface {
 	Do(ctx context.Context, req *QuotaRequest) (int64, error)
 }
 
+// GetQuotaKey is a contract to get quota key for the cache
+type GetQuotaKey interface {
+	Do(ctx context.Context, req *QuotaRequest) (string, error)
+}
+
+// GetQuotaExpiration is a contract to get quota expiration for the cache
+type GetQuotaExpiration interface {
+	Do(ctx context.Context, req *QuotaRequest) (time.Duration, error)
+}
+
 // XSetNXQuota is a contract to check exists or set if not exists for quota
 type XSetNXQuota interface {
 	Do(ctx context.Context, req *QuotaRequest) error
 }
 
-// GetQuotaCacheParams is a contract to get quota cache parameter from a given data
-type GetQuotaCacheParams interface {
-	Do(ctx context.Context, req *QuotaRequest) (*QuotaCacheParams, error)
-}
-
 // AddQuotaUsageConfig .
 type AddQuotaUsageConfig struct {
-	Next                UpdateQuotaUsage
-	Cache               Cache
-	GetQuotaCacheParams GetQuotaCacheParams
-	GetQuotaLimit       GetQuota
-	GetQuotaUsage       GetQuota
-	GetQuotaUsageConfig GetQuotaUsageConfig
-	Option              AddUsageOption
+	Next                    UpdateQuotaUsage
+	Cache                   Cache
+	GetQuotaLimit           GetQuota
+	GetQuotaUsage           GetQuota
+	GetQuotaUsageKey        GetQuotaKey
+	GetQuotaUsageExpiration GetQuotaExpiration
+	GetQuotaUsageConfig     GetQuotaUsageConfig
+	Option                  AddUsageOption
 }
 
 // ReduceQuotaUsageConfig .
 type ReduceQuotaUsageConfig struct {
-	Next                UpdateQuotaUsage
-	Cache               Cache
-	GetQuotaCacheParams GetQuotaCacheParams
-	GetQuotaUsage       GetQuota
-	GetQuotaUsageConfig GetQuotaUsageConfig
-	Option              ReduceUsageOption
+	Next                    UpdateQuotaUsage
+	Cache                   Cache
+	GetQuotaUsage           GetQuota
+	GetQuotaUsageKey        GetQuotaKey
+	GetQuotaUsageExpiration GetQuotaExpiration
+	GetQuotaUsageConfig     GetQuotaUsageConfig
+	Option                  ReduceUsageOption
 }
 
 // GetQuotaUsageConfig .
@@ -104,15 +105,29 @@ func (q GetQuotaUsageConfig) GetRetryIn() time.Duration {
 
 // AddQuotaUsage .
 func AddQuotaUsage(conf AddQuotaUsageConfig) UpdateQuotaUsage {
+	if conf.Cache == nil {
+		panic("Cache is required")
+	}
+	if conf.GetQuotaLimit == nil {
+		panic("GetQuotaLimit is required")
+	}
+	if conf.GetQuotaUsageKey == nil {
+		panic("GetQuotaUsageKey is required")
+	}
+
 	if conf.Next == nil {
 		conf.Next = NopUpdateQuotaUsage()
 	}
 
-	addQuotaUsage := NewAddQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaLimit, conf.Next, conf.Option)
+	addQuotaUsage := NewAddQuotaUsage(conf.Cache, conf.GetQuotaUsageKey, conf.GetQuotaLimit, conf.Next, conf.Option)
 
 	if conf.GetQuotaUsage != nil {
+		if conf.GetQuotaUsageExpiration == nil {
+			panic("GetQuotaUsageExpiration is required")
+		}
+
 		getUsageConf := conf.GetQuotaUsageConfig
-		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, getUsageConf.GetLockIn())
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaUsageKey, conf.GetQuotaUsageExpiration, conf.GetQuotaUsage, getUsageConf.GetLockIn())
 		xSetNXQuotaUsage = NewRetryableXSetNXQuota(xSetNXQuotaUsage, getUsageConf.GetMaxRetry(), getUsageConf.GetRetryIn())
 		addQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), addQuotaUsage)
 	}
@@ -122,15 +137,26 @@ func AddQuotaUsage(conf AddQuotaUsageConfig) UpdateQuotaUsage {
 
 // ReduceQuotaUsage .
 func ReduceQuotaUsage(conf ReduceQuotaUsageConfig) UpdateQuotaUsage {
+	if conf.Cache == nil {
+		panic("Cache is required")
+	}
+	if conf.GetQuotaUsageKey == nil {
+		panic("GetQuotaUsageKey is required")
+	}
+
 	if conf.Next == nil {
 		conf.Next = NopUpdateQuotaUsage()
 	}
 
-	reduceQuotaUsage := NewReduceQuotaUsage(conf.Cache, conf.GetQuotaCacheParams, conf.Next, conf.Option)
+	reduceQuotaUsage := NewReduceQuotaUsage(conf.Cache, conf.GetQuotaUsageKey, conf.Next, conf.Option)
 
 	if conf.GetQuotaUsage != nil {
+		if conf.GetQuotaUsageExpiration == nil {
+			panic("GetQuotaUsageExpiration is required")
+		}
+
 		getUsageConf := conf.GetQuotaUsageConfig
-		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaCacheParams, conf.GetQuotaUsage, getUsageConf.GetLockIn())
+		xSetNXQuotaUsage := NewXSetNXQuota(conf.Cache, conf.GetQuotaUsageKey, conf.GetQuotaUsageExpiration, conf.GetQuotaUsage, getUsageConf.GetLockIn())
 		xSetNXQuotaUsage = NewRetryableXSetNXQuota(xSetNXQuotaUsage, getUsageConf.GetMaxRetry(), getUsageConf.GetRetryIn())
 		reduceQuotaUsage = NewUpdateQuotaUsageMiddleware(NewXSetNXQuotaUsage(xSetNXQuotaUsage), reduceQuotaUsage)
 	}

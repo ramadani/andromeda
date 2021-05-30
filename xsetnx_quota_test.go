@@ -16,18 +16,19 @@ func TestXSetNXQuota(t *testing.T) {
 	ctx := context.TODO()
 	mockCtrl := gomock.NewController(t)
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockGetQuotaCacheParams := mocks.NewMockGetQuotaCacheParams(mockCtrl)
+	mockGetQuotaKey := mocks.NewMockGetQuotaKey(mockCtrl)
+	mockGetQuotaExp := mocks.NewMockGetQuotaExpiration(mockCtrl)
 	mockGetQuota := mocks.NewMockGetQuota(mockCtrl)
 	lockIn := time.Second * 5
-	xSetNXQuota := andromeda.NewXSetNXQuota(mockCache, mockGetQuotaCacheParams, mockGetQuota, lockIn)
+	xSetNXQuota := andromeda.NewXSetNXQuota(mockCache, mockGetQuotaKey, mockGetQuotaExp, mockGetQuota, lockIn)
 
-	t.Run("ErrorGetQuotaCacheParams", func(t *testing.T) {
+	t.Run("ErrorGetQuotaKey", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(nil, mockErr)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return("", mockErr)
 
 		err := xSetNXQuota.Do(ctx, req)
 
@@ -38,11 +39,11 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
+		key := "123-key"
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), mockErr)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), mockErr)
 
 		err := xSetNXQuota.Do(ctx, req)
 
@@ -53,10 +54,10 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
+		key := "123-key"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(1), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(1), nil)
 
 		err := xSetNXQuota.Do(ctx, req)
 
@@ -67,12 +68,12 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(false, mockErr)
 
 		err := xSetNXQuota.Do(ctx, req)
@@ -84,11 +85,11 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(false, nil)
 
 		err := xSetNXQuota.Do(ctx, req)
@@ -97,16 +98,16 @@ func TestXSetNXQuota(t *testing.T) {
 		assert.True(t, errors.Is(err, andromeda.ErrLockedKey))
 	})
 
-	t.Run("ErrorNextDoAndUnlock", func(t *testing.T) {
+	t.Run("ErrorGetQuotaAndUnlock", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
 		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(0), mockErr)
 		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(1), nil)
@@ -116,17 +117,17 @@ func TestXSetNXQuota(t *testing.T) {
 		assert.EqualError(t, err, mockErr.Error())
 	})
 
-	t.Run("ErrorNextDoAndErrorUnlock", func(t *testing.T) {
+	t.Run("ErrorGetQuotaAndErrorUnlock", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 		mockErr := errors.New("unexpected")
 		mockErrUnlock := errors.New("err unlock")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
 		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(0), mockErr)
 		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(0), mockErrUnlock)
@@ -136,19 +137,41 @@ func TestXSetNXQuota(t *testing.T) {
 		assert.EqualError(t, err, mockErrUnlock.Error())
 	})
 
+	t.Run("ErrorGetQuotaExpirationAndUnlock", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		req := &andromeda.QuotaRequest{QuotaID: "123"}
+		key := "123-key"
+		mockLockKey := fmt.Sprintf("%s-lock", key)
+		mockErr := errors.New("unexpected")
+
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
+		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
+		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(1000), nil)
+		mockGetQuotaExp.EXPECT().Do(ctx, req).Return(time.Duration(0), mockErr)
+		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(1), nil)
+
+		err := xSetNXQuota.Do(ctx, req)
+
+		assert.EqualError(t, err, mockErr.Error())
+	})
+
 	t.Run("ErrorSetQuotaAndUnlock", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		exp := time.Hour * 1
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
 		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(1000), nil)
-		mockCache.EXPECT().SetNX(ctx, mockCacheParams.Key, int64(1000), mockCacheParams.Expiration).Return(false, mockErr)
+		mockGetQuotaExp.EXPECT().Do(ctx, req).Return(exp, nil)
+		mockCache.EXPECT().SetNX(ctx, key, int64(1000), exp).Return(false, mockErr)
 		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(1), nil)
 
 		err := xSetNXQuota.Do(ctx, req)
@@ -160,16 +183,18 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		exp := time.Hour * 1
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 		mockErr := errors.New("unexpected")
 		mockErrUnlock := errors.New("err unlock")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
 		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(1000), nil)
-		mockCache.EXPECT().SetNX(ctx, mockCacheParams.Key, int64(1000), mockCacheParams.Expiration).Return(false, mockErr)
+		mockGetQuotaExp.EXPECT().Do(ctx, req).Return(exp, nil)
+		mockCache.EXPECT().SetNX(ctx, key, int64(1000), exp).Return(false, mockErr)
 		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(0), mockErrUnlock)
 
 		err := xSetNXQuota.Do(ctx, req)
@@ -181,14 +206,16 @@ func TestXSetNXQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
-		mockLockKey := fmt.Sprintf("%s-lock", mockCacheParams.Key)
+		key := "123-key"
+		exp := time.Hour * 1
+		mockLockKey := fmt.Sprintf("%s-lock", key)
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Exists(ctx, mockCacheParams.Key).Return(int64(0), nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Exists(ctx, key).Return(int64(0), nil)
 		mockCache.EXPECT().SetNX(ctx, mockLockKey, 1, lockIn).Return(true, nil)
 		mockGetQuota.EXPECT().Do(ctx, req).Return(int64(1000), nil)
-		mockCache.EXPECT().SetNX(ctx, mockCacheParams.Key, int64(1000), mockCacheParams.Expiration).Return(false, nil)
+		mockGetQuotaExp.EXPECT().Do(ctx, req).Return(exp, nil)
+		mockCache.EXPECT().SetNX(ctx, key, int64(1000), exp).Return(false, nil)
 		mockCache.EXPECT().Del(ctx, mockLockKey).Return(int64(0), nil)
 
 		err := xSetNXQuota.Do(ctx, req)

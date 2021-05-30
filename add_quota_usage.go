@@ -13,11 +13,11 @@ type AddUsageOption struct {
 }
 
 type addQuotaUsage struct {
-	cache               Cache
-	getQuotaCacheParams GetQuotaCacheParams
-	getQuotaLimit       GetQuota
-	next                UpdateQuotaUsage
-	option              AddUsageOption
+	cache            Cache
+	getQuotaUsageKey GetQuotaKey
+	getQuotaLimit    GetQuota
+	next             UpdateQuotaUsage
+	option           AddUsageOption
 }
 
 func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res interface{}, err error) {
@@ -35,7 +35,7 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 	}()
 
 	quotaReq := &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data}
-	cache, err := q.getQuotaCacheParams.Do(ctx, quotaReq)
+	key, err := q.getQuotaUsageKey.Do(ctx, quotaReq)
 	if err == ErrQuotaNotFound {
 		return q.next.Do(ctx, req)
 	} else if err != nil {
@@ -52,15 +52,15 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 		return
 	}
 
-	totalUsage, err = q.cache.IncrBy(ctx, cache.Key, usage)
+	totalUsage, err = q.cache.IncrBy(ctx, key, usage)
 	if err != nil {
 		err = fmt.Errorf("%w: %v", ErrAddQuotaUsage, err)
 		return
 	}
 
 	if totalUsage > limit {
-		err = NewQuotaLimitExceededError(cache.Key, limit, totalUsage-usage)
-		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+		err = NewQuotaLimitExceededError(key, limit, totalUsage-usage)
+		if er := q.reverseUsage(ctx, key, usage); er != nil {
 			err = er
 		}
 		return
@@ -71,7 +71,7 @@ func (q *addQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res int
 		isNextErr = true
 
 		if !q.option.Irreversible {
-			if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			if er := q.reverseUsage(ctx, key, usage); er != nil {
 				err, _err = er, er
 				isNextErr = false
 			}
@@ -91,17 +91,17 @@ func (q *addQuotaUsage) reverseUsage(ctx context.Context, key string, usage int6
 // NewAddQuotaUsage .
 func NewAddQuotaUsage(
 	cache Cache,
-	getQuotaCacheParams GetQuotaCacheParams,
+	getQuotaUsageKey GetQuotaKey,
 	getQuotaLimit GetQuota,
 	next UpdateQuotaUsage,
 	option AddUsageOption,
 ) UpdateQuotaUsage {
 	return &addQuotaUsage{
-		cache:               cache,
-		getQuotaCacheParams: getQuotaCacheParams,
-		getQuotaLimit:       getQuotaLimit,
-		next:                next,
-		option:              option,
+		cache:            cache,
+		getQuotaUsageKey: getQuotaUsageKey,
+		getQuotaLimit:    getQuotaLimit,
+		next:             next,
+		option:           option,
 	}
 }
 

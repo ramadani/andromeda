@@ -7,19 +7,19 @@ import (
 )
 
 type getCachedQuota struct {
-	cache               Cache
-	getQuotaCacheParams GetQuotaCacheParams
+	cache       Cache
+	getQuotaKey GetQuotaKey
 }
 
 func (q *getCachedQuota) Do(ctx context.Context, req *QuotaRequest) (int64, error) {
-	cache, err := q.getQuotaCacheParams.Do(ctx, req)
+	key, err := q.getQuotaKey.Do(ctx, req)
 	if err != nil {
 		return 0, err
 	}
 
-	val, err := q.cache.Get(ctx, cache.Key)
+	val, err := q.cache.Get(ctx, key)
 	if err == ErrCacheNotFound {
-		return 0, fmt.Errorf("%w: key %s", ErrQuotaNotFound, cache.Key)
+		return 0, fmt.Errorf("%w: key %s", ErrQuotaNotFound, key)
 	} else if err != nil {
 		return 0, err
 	}
@@ -30,6 +30,6 @@ func (q *getCachedQuota) Do(ctx context.Context, req *QuotaRequest) (int64, erro
 }
 
 // NewGetCachedQuota .
-func NewGetCachedQuota(cache Cache, getQuotaCacheParams GetQuotaCacheParams) GetQuota {
-	return &getCachedQuota{cache: cache, getQuotaCacheParams: getQuotaCacheParams}
+func NewGetCachedQuota(cache Cache, getQuotaKey GetQuotaKey) GetQuota {
+	return &getCachedQuota{cache: cache, getQuotaKey: getQuotaKey}
 }

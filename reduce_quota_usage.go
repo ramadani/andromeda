@@ -13,10 +13,10 @@ type ReduceUsageOption struct {
 }
 
 type reduceQuotaUsage struct {
-	cache               Cache
-	getQuotaCacheParams GetQuotaCacheParams
-	next                UpdateQuotaUsage
-	option              ReduceUsageOption
+	cache            Cache
+	getQuotaUsageKey GetQuotaKey
+	next             UpdateQuotaUsage
+	option           ReduceUsageOption
 }
 
 func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res interface{}, err error) {
@@ -33,7 +33,7 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res 
 		}
 	}()
 
-	cache, err := q.getQuotaCacheParams.Do(ctx, &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data})
+	key, err := q.getQuotaUsageKey.Do(ctx, &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data})
 	if err == ErrQuotaNotFound {
 		return q.next.Do(ctx, req)
 	} else if err != nil {
@@ -45,15 +45,15 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res 
 		usage = q.option.ModifiedUsage
 	}
 
-	totalUsage, err = q.cache.DecrBy(ctx, cache.Key, usage)
+	totalUsage, err = q.cache.DecrBy(ctx, key, usage)
 	if err != nil {
 		err = fmt.Errorf("%w: %v", ErrReduceQuotaUsage, err)
 		return
 	}
 
 	if totalUsage < 0 {
-		err = NewInvalidMinQuotaUsageError(cache.Key, totalUsage)
-		if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+		err = NewInvalidMinQuotaUsageError(key, totalUsage)
+		if er := q.reverseUsage(ctx, key, usage); er != nil {
 			err = er
 		}
 		return
@@ -64,7 +64,7 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res 
 		isNextErr = true
 
 		if !q.option.Irreversible {
-			if er := q.reverseUsage(ctx, cache.Key, usage); er != nil {
+			if er := q.reverseUsage(ctx, key, usage); er != nil {
 				err, _err = er, er
 				isNextErr = false
 			}
@@ -84,15 +84,15 @@ func (q *reduceQuotaUsage) reverseUsage(ctx context.Context, key string, usage i
 // NewReduceQuotaUsage .
 func NewReduceQuotaUsage(
 	cache Cache,
-	getQuotaCacheParams GetQuotaCacheParams,
+	getQuotaUsageKey GetQuotaKey,
 	next UpdateQuotaUsage,
 	option ReduceUsageOption,
 ) UpdateQuotaUsage {
 	return &reduceQuotaUsage{
-		cache:               cache,
-		getQuotaCacheParams: getQuotaCacheParams,
-		next:                next,
-		option:              option,
+		cache:            cache,
+		getQuotaUsageKey: getQuotaUsageKey,
+		next:             next,
+		option:           option,
 	}
 }
 

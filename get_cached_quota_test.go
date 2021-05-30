@@ -8,23 +8,22 @@ import (
 	"github.com/ramadani/andromeda/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestGetCachedQuota(t *testing.T) {
 	ctx := context.TODO()
 	mockCtrl := gomock.NewController(t)
 	mockCache := mocks.NewMockCache(mockCtrl)
-	mockGetQuotaCacheParams := mocks.NewMockGetQuotaCacheParams(mockCtrl)
-	getCachedQuota := andromeda.NewGetCachedQuota(mockCache, mockGetQuotaCacheParams)
+	mockGetQuotaKey := mocks.NewMockGetQuotaKey(mockCtrl)
+	getCachedQuota := andromeda.NewGetCachedQuota(mockCache, mockGetQuotaKey)
 
-	t.Run("ErrorGetQuotaCacheParams", func(t *testing.T) {
+	t.Run("ErrorGetQuotaKey", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(nil, mockErr)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return("", mockErr)
 
 		res, err := getCachedQuota.Do(ctx, req)
 
@@ -36,11 +35,11 @@ func TestGetCachedQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
+		key := "123-key"
 		mockErr := errors.New("unexpected")
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Get(ctx, mockCacheParams.Key).Return("", mockErr)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Get(ctx, key).Return("", mockErr)
 
 		res, err := getCachedQuota.Do(ctx, req)
 
@@ -52,10 +51,10 @@ func TestGetCachedQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
+		key := "123-key"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Get(ctx, mockCacheParams.Key).Return("", andromeda.ErrCacheNotFound)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Get(ctx, key).Return("", andromeda.ErrCacheNotFound)
 
 		res, err := getCachedQuota.Do(ctx, req)
 
@@ -68,10 +67,10 @@ func TestGetCachedQuota(t *testing.T) {
 		defer mockCtrl.Finish()
 
 		req := &andromeda.QuotaRequest{QuotaID: "123"}
-		mockCacheParams := &andromeda.QuotaCacheParams{Key: "123-key", Expiration: 5 * time.Minute}
+		key := "123-key"
 
-		mockGetQuotaCacheParams.EXPECT().Do(ctx, req).Return(mockCacheParams, nil)
-		mockCache.EXPECT().Get(ctx, mockCacheParams.Key).Return("1000", nil)
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Get(ctx, key).Return("1000", nil)
 
 		res, err := getCachedQuota.Do(ctx, req)
 

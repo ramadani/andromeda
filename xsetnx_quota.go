@@ -7,24 +7,25 @@ import (
 )
 
 type xSetNXQuota struct {
-	cache               Cache
-	getQuotaCacheParams GetQuotaCacheParams
-	getQuota            GetQuota
-	lockIn              time.Duration
+	cache              Cache
+	getQuotaKey        GetQuotaKey
+	getQuotaExpiration GetQuotaExpiration
+	getQuota           GetQuota
+	lockIn             time.Duration
 }
 
 func (q *xSetNXQuota) Do(ctx context.Context, req *QuotaRequest) (err error) {
-	cache, err := q.getQuotaCacheParams.Do(ctx, req)
+	key, err := q.getQuotaKey.Do(ctx, req)
 	if err != nil {
 		return
 	}
 
-	exists, err := q.cache.Exists(ctx, cache.Key)
+	exists, err := q.cache.Exists(ctx, key)
 	if err != nil || exists == 1 {
 		return
 	}
 
-	lockKey := fmt.Sprintf("%s-lock", cache.Key)
+	lockKey := fmt.Sprintf("%s-lock", key)
 	succeedLock, err := q.cache.SetNX(ctx, lockKey, 1, q.lockIn)
 	if err != nil {
 		return
@@ -44,22 +45,29 @@ func (q *xSetNXQuota) Do(ctx context.Context, req *QuotaRequest) (err error) {
 		return
 	}
 
-	_, err = q.cache.SetNX(ctx, cache.Key, val, cache.Expiration)
+	exp, err := q.getQuotaExpiration.Do(ctx, req)
+	if err != nil {
+		return
+	}
+
+	_, err = q.cache.SetNX(ctx, key, val, exp)
 	return
 }
 
 // NewXSetNXQuota .
 func NewXSetNXQuota(
 	cache Cache,
-	getQuotaCacheParams GetQuotaCacheParams,
+	getQuotaKey GetQuotaKey,
+	getQuotaExpiration GetQuotaExpiration,
 	getQuota GetQuota,
 	lockIn time.Duration,
 ) XSetNXQuota {
 	return &xSetNXQuota{
-		cache:               cache,
-		getQuotaCacheParams: getQuotaCacheParams,
-		getQuota:            getQuota,
-		lockIn:              lockIn,
+		cache:              cache,
+		getQuotaKey:        getQuotaKey,
+		getQuotaExpiration: getQuotaExpiration,
+		getQuota:           getQuota,
+		lockIn:             lockIn,
 	}
 }
 

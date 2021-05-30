@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 	andromeda "github.com/ramadani/andromeda"
@@ -135,6 +136,82 @@ func (mr *MockGetQuotaMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuota)(nil).Do), ctx, req)
 }
 
+// MockGetQuotaKey is a mock of GetQuotaKey interface.
+type MockGetQuotaKey struct {
+	ctrl     *gomock.Controller
+	recorder *MockGetQuotaKeyMockRecorder
+}
+
+// MockGetQuotaKeyMockRecorder is the mock recorder for MockGetQuotaKey.
+type MockGetQuotaKeyMockRecorder struct {
+	mock *MockGetQuotaKey
+}
+
+// NewMockGetQuotaKey creates a new mock instance.
+func NewMockGetQuotaKey(ctrl *gomock.Controller) *MockGetQuotaKey {
+	mock := &MockGetQuotaKey{ctrl: ctrl}
+	mock.recorder = &MockGetQuotaKeyMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGetQuotaKey) EXPECT() *MockGetQuotaKeyMockRecorder {
+	return m.recorder
+}
+
+// Do mocks base method.
+func (m *MockGetQuotaKey) Do(ctx context.Context, req *andromeda.QuotaRequest) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Do", ctx, req)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Do indicates an expected call of Do.
+func (mr *MockGetQuotaKeyMockRecorder) Do(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuotaKey)(nil).Do), ctx, req)
+}
+
+// MockGetQuotaExpiration is a mock of GetQuotaExpiration interface.
+type MockGetQuotaExpiration struct {
+	ctrl     *gomock.Controller
+	recorder *MockGetQuotaExpirationMockRecorder
+}
+
+// MockGetQuotaExpirationMockRecorder is the mock recorder for MockGetQuotaExpiration.
+type MockGetQuotaExpirationMockRecorder struct {
+	mock *MockGetQuotaExpiration
+}
+
+// NewMockGetQuotaExpiration creates a new mock instance.
+func NewMockGetQuotaExpiration(ctrl *gomock.Controller) *MockGetQuotaExpiration {
+	mock := &MockGetQuotaExpiration{ctrl: ctrl}
+	mock.recorder = &MockGetQuotaExpirationMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGetQuotaExpiration) EXPECT() *MockGetQuotaExpirationMockRecorder {
+	return m.recorder
+}
+
+// Do mocks base method.
+func (m *MockGetQuotaExpiration) Do(ctx context.Context, req *andromeda.QuotaRequest) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Do", ctx, req)
+	ret0, _ := ret[0].(time.Duration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Do indicates an expected call of Do.
+func (mr *MockGetQuotaExpirationMockRecorder) Do(ctx, req interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuotaExpiration)(nil).Do), ctx, req)
+}
+
 // MockXSetNXQuota is a mock of XSetNXQuota interface.
 type MockXSetNXQuota struct {
 	ctrl     *gomock.Controller
@@ -170,42 +247,4 @@ func (m *MockXSetNXQuota) Do(ctx context.Context, req *andromeda.QuotaRequest) e
 func (mr *MockXSetNXQuotaMockRecorder) Do(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockXSetNXQuota)(nil).Do), ctx, req)
-}
-
-// MockGetQuotaCacheParams is a mock of GetQuotaCacheParams interface.
-type MockGetQuotaCacheParams struct {
-	ctrl     *gomock.Controller
-	recorder *MockGetQuotaCacheParamsMockRecorder
-}
-
-// MockGetQuotaCacheParamsMockRecorder is the mock recorder for MockGetQuotaCacheParams.
-type MockGetQuotaCacheParamsMockRecorder struct {
-	mock *MockGetQuotaCacheParams
-}
-
-// NewMockGetQuotaCacheParams creates a new mock instance.
-func NewMockGetQuotaCacheParams(ctrl *gomock.Controller) *MockGetQuotaCacheParams {
-	mock := &MockGetQuotaCacheParams{ctrl: ctrl}
-	mock.recorder = &MockGetQuotaCacheParamsMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockGetQuotaCacheParams) EXPECT() *MockGetQuotaCacheParamsMockRecorder {
-	return m.recorder
-}
-
-// Do mocks base method.
-func (m *MockGetQuotaCacheParams) Do(ctx context.Context, req *andromeda.QuotaRequest) (*andromeda.QuotaCacheParams, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Do", ctx, req)
-	ret0, _ := ret[0].(*andromeda.QuotaCacheParams)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Do indicates an expected call of Do.
-func (mr *MockGetQuotaCacheParamsMockRecorder) Do(ctx, req interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockGetQuotaCacheParams)(nil).Do), ctx, req)
 }
