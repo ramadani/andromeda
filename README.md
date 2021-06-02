@@ -51,6 +51,15 @@ Expiration is used to set how long the duration of a quota usage is stored in Re
 
 For example, we will use claim voucher use case.
 
+```go
+type Voucher struct {
+	ID    string
+	Code  string
+	Limit int64
+	Usage int64
+}
+```
+
 To get quota limit and usage, we create code using `GetQuota` interface
 
 **Get quota limit**
