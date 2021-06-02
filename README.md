@@ -8,7 +8,7 @@ andromeda is a golang package that can be implemented on an object that has quot
 - Handle race conditions
 - Can be applied to multiple quotas
 - Reversible if an error occurs
-- Handling if quota is deleted from redis
+- Handling if quota usage is not exists in redis
 - Can be implemented according to your needs
 
 ### Use cases
@@ -31,7 +31,7 @@ go get github.com/ramadani/andromeda
 
 ## Guide
 
-A quota consists of limits and usage. so that the entity that you have must have these 2 attributes.
+A quota consists of limits and usage. so the entity that you have must have these 2 attributes.
 
 There are 4 functions that you need to prepare for each of your quota.
 
@@ -49,7 +49,7 @@ Expiration is used to set how long the duration of a quota usage is stored in Re
 
 ### Example
 
-For example, we will use the use case claim voucher.
+For example, we will use claim voucher use case.
 
 To get quota limit and usage, we create code using `GetQuota` interface
 
@@ -201,7 +201,7 @@ func (c *claimVoucher) Do(ctx context.Context, code, userID string) (*History, e
 
 #### Listener
 
-You can implement a listener to know the events on success or error.
+You can implement a listener to know the events on success or error using the `UpdateQuotaUsageListener` interface.
 
 ```go
 type updateVoucherQuotaUsageListener struct{}
