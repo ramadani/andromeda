@@ -51,6 +51,22 @@ func TestReduceQuotaUsage(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("DoNextWhenQuotaNotFoundWithFormat", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		quotaUsageReq := &andromeda.QuotaUsageRequest{QuotaID: "123", Usage: int64(1000)}
+		quotaReq := &andromeda.QuotaRequest{QuotaID: quotaUsageReq.QuotaID, Data: quotaUsageReq.Data}
+		mockRes := "result"
+
+		mockGetQuotaUsageKey.EXPECT().Do(ctx, quotaReq).Return("", fmt.Errorf("error: %w", andromeda.ErrQuotaNotFound))
+		mockNext.EXPECT().Do(ctx, quotaUsageReq).Return(mockRes, nil)
+
+		res, err := reduceQuotaUsage.Do(ctx, quotaUsageReq)
+
+		assert.Equal(t, mockRes, res)
+		assert.Nil(t, err)
+	})
+
 	t.Run("ErrorDecrementUsage", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
