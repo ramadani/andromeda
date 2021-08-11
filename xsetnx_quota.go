@@ -2,6 +2,7 @@ package andromeda
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -16,7 +17,9 @@ type xSetNXQuota struct {
 
 func (q *xSetNXQuota) Do(ctx context.Context, req *QuotaRequest) (err error) {
 	key, err := q.getQuotaKey.Do(ctx, req)
-	if err != nil {
+	if errors.Is(err, ErrQuotaNotFound) {
+		return nil
+	} else if err != nil {
 		return
 	}
 
@@ -78,8 +81,10 @@ type retryableXSetNXQuota struct {
 }
 
 func (q *retryableXSetNXQuota) Do(ctx context.Context, req *QuotaRequest) error {
+	var err error
 	for i := 0; i < q.maxRetry; i++ {
-		if err := q.next.Do(ctx, req); err == nil {
+		err = q.next.Do(ctx, req)
+		if err == nil {
 			return nil
 		}
 
@@ -88,7 +93,7 @@ func (q *retryableXSetNXQuota) Do(ctx context.Context, req *QuotaRequest) error 
 		}
 	}
 
-	return ErrMaxRetryExceeded
+	return fmt.Errorf("%w: %q", ErrMaxRetryExceeded, err)
 }
 
 // NewRetryableXSetNXQuota .

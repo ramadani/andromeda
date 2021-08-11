@@ -35,6 +35,19 @@ func TestXSetNXQuota(t *testing.T) {
 		assert.EqualError(t, err, mockErr.Error())
 	})
 
+	t.Run("IgnoreWhenQuotaKeyNotFound", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		req := &andromeda.QuotaRequest{QuotaID: "123"}
+		mockErr := andromeda.ErrQuotaNotFound
+
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return("", mockErr)
+
+		err := xSetNXQuota.Do(ctx, req)
+
+		assert.Nil(t, err)
+	})
+
 	t.Run("ErrorCacheExists", func(t *testing.T) {
 		defer mockCtrl.Finish()
 
@@ -241,7 +254,7 @@ func TestRetryableXSetNXQuota(t *testing.T) {
 
 		err := retryable.Do(ctx, req)
 
-		assert.EqualError(t, err, mockErr.Error())
+		assert.True(t, errors.Is(err, mockErr))
 	})
 
 	t.Run("PartialError", func(t *testing.T) {

@@ -2,6 +2,7 @@ package andromeda
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -34,7 +35,7 @@ func (q *reduceQuotaUsage) Do(ctx context.Context, req *QuotaUsageRequest) (res 
 	}()
 
 	key, err := q.getQuotaUsageKey.Do(ctx, &QuotaRequest{QuotaID: req.QuotaID, Data: req.Data})
-	if err == ErrQuotaNotFound {
+	if errors.Is(err, ErrQuotaNotFound) {
 		return q.next.Do(ctx, req)
 	} else if err != nil {
 		return
