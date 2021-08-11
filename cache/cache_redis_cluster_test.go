@@ -91,6 +91,29 @@ func TestCacheRedisCluster(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("ExistsHasError", func(t *testing.T) {
+		defer miniRedis.SetError("")
+
+		key := "123-5-1"
+		ttl := 5 * time.Second
+
+		res, err := redisCache.Set(ctx, key, "1", ttl)
+
+		assert.Equal(t, "OK", res)
+		assert.Nil(t, err)
+
+		exists, err := redisCache.Exists(ctx, fmt.Sprintf("test-%s", key))
+
+		assert.Equal(t, int64(0), exists)
+		assert.Nil(t, err)
+
+		miniRedis.SetError("error")
+		exists, err = redisCache.Exists(ctx, key)
+
+		assert.Equal(t, int64(0), exists)
+		assert.Error(t, err)
+	})
+
 	t.Run("Delete", func(t *testing.T) {
 		key := "123-6"
 		ttl := 5 * time.Second
@@ -109,5 +132,23 @@ func TestCacheRedisCluster(t *testing.T) {
 
 		assert.Equal(t, int64(0), exists)
 		assert.Nil(t, err)
+	})
+
+	t.Run("DeleteHasError", func(t *testing.T) {
+		defer miniRedis.SetError("")
+
+		key := "123-6-1"
+		ttl := 5 * time.Second
+
+		res, err := redisCache.Set(ctx, key, "1", ttl)
+
+		assert.Equal(t, "OK", res)
+		assert.Nil(t, err)
+
+		miniRedis.SetError("error")
+		exists, err := redisCache.Del(ctx, key)
+
+		assert.Equal(t, int64(0), exists)
+		assert.Error(t, err)
 	})
 }
