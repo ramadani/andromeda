@@ -36,11 +36,31 @@ func (c *cacheRedisCluster) SetNX(ctx context.Context, key string, value interfa
 }
 
 func (c *cacheRedisCluster) Exists(ctx context.Context, keys ...string) (int64, error) {
-	return c.client.Exists(ctx, keys...).Result()
+	n := int64(0)
+
+	for _, key := range keys {
+		i, err := c.client.Exists(ctx, key).Result()
+		if err != nil {
+			return 0, err
+		}
+		n += i
+	}
+
+	return n, nil
 }
 
 func (c *cacheRedisCluster) Del(ctx context.Context, keys ...string) (int64, error) {
-	return c.client.Del(ctx, keys...).Result()
+	n := int64(0)
+
+	for _, key := range keys {
+		i, err := c.client.Del(ctx, key).Result()
+		if err != nil {
+			return 0, err
+		}
+		n += i
+	}
+
+	return n, nil
 }
 
 // NewCacheRedisCluster cache using redis cluster

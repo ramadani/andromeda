@@ -77,4 +77,19 @@ func TestGetCachedQuota(t *testing.T) {
 		assert.Equal(t, int64(1000), res)
 		assert.Nil(t, err)
 	})
+
+	t.Run("ErrorConvertValue", func(t *testing.T) {
+		defer mockCtrl.Finish()
+
+		req := &andromeda.QuotaRequest{QuotaID: "123"}
+		key := "123-key"
+
+		mockGetQuotaKey.EXPECT().Do(ctx, req).Return(key, nil)
+		mockCache.EXPECT().Get(ctx, key).Return("lorem", nil)
+
+		res, err := getCachedQuota.Do(ctx, req)
+
+		assert.Equal(t, int64(0), res)
+		assert.NotNil(t, err)
+	})
 }

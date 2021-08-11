@@ -24,8 +24,10 @@ func (q *getCachedQuota) Do(ctx context.Context, req *QuotaRequest) (int64, erro
 		return 0, err
 	}
 
-	res, _ := strconv.Atoi(val)
-
+	res, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, err
+	}
 	return int64(res), nil
 }
 
